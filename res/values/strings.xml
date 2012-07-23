@@ -2,4 +2,9 @@
     <string name="app_name">BU-Auth</string>
     <string name="authenticator_label">Darwin Account</string>
     <string name="authenticator_activity_label">Authenticate to Darwin</string>
+    <string name="dialogintro">Please provide your login credentials for the darwin server.</string>
+    <string name="usernamelabel">Your username on darwin:</string>
+    <string name="passwordlabel">Your password:</string>
+    <string name="hint_username">Username</string>
+    <string name="hint_password">Password</string>
 </resources>

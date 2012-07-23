@@ -14,7 +14,12 @@
             </intent-filter>
             <meta-data android:resource="@xml/authenticator" android:name="android.accounts.AccountAuthenticator"/>
         </service>
-        <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity"></activity>
+        <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN"/>
+            </intent-filter>
+        </activity>
 
     </application>
 

@@ -2,8 +2,6 @@ package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.CookieHandler;
-import java.net.CookieManager;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.ByteBuffer;
