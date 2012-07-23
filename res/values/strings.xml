@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">BU-Auth</string>
+    <string name="authenticator_label">Darwin Account</string>
+    <string name="authenticator_activity_label">Authenticate to Darwin</string>
+</resources>
