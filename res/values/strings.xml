@@ -7,4 +7,14 @@
     <string name="passwordlabel">Your password:</string>
     <string name="hint_username">Username</string>
     <string name="hint_password">Password</string>
+    <string name="creating_keys">Creating keys</string>
+    <string name="authenticating">authenticating</string>
+    <string name="toast_create_success">Account created</string>
+    <string name="toast_update_success">Account updated</string>
+    <string name="toast_cancelled">Cancelled</string>
+    <string name="dlg_title_error">Error</string>
+    <string name="dlg_msg_error">The account could not be created</string>
+    <string name="dlg_title_unauth">Invalid credentials</string>
+    <string name="dlg_msg_unauth">The username password combination is not valid</string>
+    <string name="retry">Retry</string>
 </resources>

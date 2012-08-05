@@ -9,21 +9,17 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.interfaces.DSAParams;
+import java.security.interfaces.DSAPrivateKey;
 import java.security.spec.DSAPrivateKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 
 import javax.net.ssl.HttpsURLConnection;
 
-import android.accounts.AbstractAccountAuthenticator;
-import android.accounts.Account;
-import android.accounts.AccountAuthenticatorResponse;
-import android.accounts.AccountManager;
-import android.accounts.NetworkErrorException;
+import android.accounts.*;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -33,17 +29,19 @@ import android.util.Log;
 
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   
-  public static final String ACCOUNT_TYPE="uk.ac.bournemouth.darwin.auth";
-  private static final String KEY_PRIVATEKEY = "privatekey";
-  private static final String KEY_PUBLICKEY = "publickey";
+  private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
+  public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
+  static final String KEY_PRIVATEKEY = "privatekey";
+  static final String KEY_PUBLICKEY = "publickey";
   private static final String TAG = DarwinAuthenticator.class.getName();
-  private static final String KEY_ALGORITHM = "DSA";
-  private static final int KEY_SIZE = 2048;
-  private static final URI GET_CHALLENGE_URL = URI.create("https://darwin.bournemouth.ac.uk/accounts/challenge");
+  static final String KEY_ALGORITHM = "DSA";
+  static final URI GET_CHALLENGE_URL = URI.create(AUTH_BASE_URL+"challenge");
+  static final URI AUTHENTICATE_URL = URI.create(AUTH_BASE_URL+"regkey");
   private static final int CHALLENGE_MAX = 4096;
   private static final String HEADER_RESPONSE = "X-Darwin-Respond";
   private static final int MAX_TOKEN_SIZE = 1024;
   private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
+  public static final String ACCOUNT_TYPE = "darwin";
   private Context aContext;
 
   public DarwinAuthenticator(Context pContext) {
@@ -53,7 +51,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle addAccount(AccountAuthenticatorResponse pResponse, String pAccountType, String pAuthTokenType, String[] pRequiredFeatures, Bundle pOptions) throws NetworkErrorException {
-    if (!pAuthTokenType.equals(ACCOUNT_TYPE)) {
+    if (!(pAuthTokenType==null || ACCOUNT_TOKEN_TYPE.equals(pAuthTokenType))) {
       final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "invalid authTokenType");
       return result;
@@ -79,7 +77,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle getAuthToken(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
-    if (!pAuthTokenType.equals(ACCOUNT_TYPE)) {
+    if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "invalid authTokenType");
       return result;
@@ -147,7 +145,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
             
             Bundle result = new Bundle();
             result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
-            result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TYPE);
+            result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
             result.putString(AccountManager.KEY_AUTHTOKEN, Base64.encodeToString(cookie, BASE64_FLAGS));
             return result;
             
@@ -192,7 +190,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return null;
   }
 
-  private PrivateKey getPrivateKey(String pPrivateKeyString) {
+  private static PrivateKey getPrivateKey(String pPrivateKeyString) {
     KeyFactory keyfactory;
     try {
       keyfactory = KeyFactory.getInstance(KEY_ALGORITHM);
@@ -223,21 +221,22 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
   
-  private KeyPair generateKeys() {
-    KeyPairGenerator generator;
-    try {
-      generator = KeyPairGenerator.getInstance(KEY_ALGORITHM);
-    } catch (NoSuchAlgorithmException e) {
-      Log.e(TAG, "The DSA algorithm isn't supported on your system", e);
-      return null;
-    }
-    generator.initialize(KEY_SIZE);
-    return generator.generateKeyPair();
+  static String encodePrivateKey(DSAPrivateKey pPrivateKey) {
+    StringBuilder result = new StringBuilder();
+    result.append(pPrivateKey.getX());
+    final DSAParams params = pPrivateKey.getParams();
+    result.append(':');
+    result.append(params.getP());
+    result.append(':');
+    result.append(params.getQ());
+    result.append(':');
+    result.append(params.getG());
+    return result.toString();
   }
 
   @Override
   public String getAuthTokenLabel(String pAuthTokenType) {
-    if (!pAuthTokenType.equals(ACCOUNT_TYPE)) {
+    if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       return null;
     }
     return aContext.getString(R.string.authenticator_label);
