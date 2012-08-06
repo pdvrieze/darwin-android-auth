@@ -32,6 +32,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
   public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
   static final String KEY_PRIVATEKEY = "privatekey";
+  static final String KEY_KEYID = "keyid";
   static final String KEY_PUBLICKEY = "publickey";
   private static final String TAG = DarwinAuthenticator.class.getName();
   static final String KEY_ALGORITHM = "DSA";
@@ -65,8 +66,30 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle confirmCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, Bundle pOptions) throws NetworkErrorException {
-    // TODO Auto-generated method stub
-    return null;
+    final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_USERNAME, pAccount.name);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, true);
+    AccountManager am=AccountManager.get(aContext);
+    long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
+    final Bundle bundle = new Bundle();
+    bundle.putParcelable(AccountManager.KEY_INTENT, intent);
+    return bundle;
+  }
+
+  @Override
+  public Bundle updateCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
+    final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_USERNAME, pAccount.name);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false);
+    AccountManager am=AccountManager.get(aContext);
+    long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
+    final Bundle bundle = new Bundle();
+    bundle.putParcelable(AccountManager.KEY_INTENT, intent);
+    return bundle;
   }
 
   @Override
@@ -247,12 +270,6 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     final Bundle result = new Bundle();
     result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, false);
     return result;
-  }
-
-  @Override
-  public Bundle updateCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
-    // TODO Auto-generated method stub
-    return null;
   }
 
 }

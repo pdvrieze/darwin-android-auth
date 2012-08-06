@@ -17,10 +17,10 @@
             <meta-data android:resource="@xml/authenticator" android:name="android.accounts.AccountAuthenticator"/>
         </service>
         <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity" android:windowSoftInputMode="stateVisible|adjustResize">
-            <intent-filter>
+            <!-- intent-filter>
                 <category android:name="android.intent.category.LAUNCHER"/>
                 <action android:name="android.intent.action.MAIN"/>
-            </intent-filter>
+            </intent-filter -->
         </activity>
 
     </application>
