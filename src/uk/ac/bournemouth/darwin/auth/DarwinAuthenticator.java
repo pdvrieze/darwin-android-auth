@@ -1,21 +1,23 @@
 package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.interfaces.DSAParams;
-import java.security.interfaces.DSAPrivateKey;
-import java.security.spec.DSAPrivateKeySpec;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.security.spec.RSAPrivateKeySpec;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -35,7 +37,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String KEY_KEYID = "keyid";
   static final String KEY_PUBLICKEY = "publickey";
   private static final String TAG = DarwinAuthenticator.class.getName();
-  static final String KEY_ALGORITHM = "DSA";
+  static final String KEY_ALGORITHM = "RSA";
   static final URI GET_CHALLENGE_URL = URI.create(AUTH_BASE_URL+"challenge");
   static final URI AUTHENTICATE_URL = URI.create(AUTH_BASE_URL+"regkey");
   private static final int CHALLENGE_MAX = 4096;
@@ -108,7 +110,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     final AccountManager am = AccountManager.get(aContext);
     String privateKeyString = am.getUserData(pAccount, KEY_PRIVATEKEY);
     PrivateKey privateKey = getPrivateKey(privateKeyString);
-    if (privateKey==null) {
+    String keyidString = am.getUserData(pAccount, KEY_KEYID);
+    long keyid = keyidString==null ? -1l : Long.parseLong(keyidString);
+    if (privateKey==null || keyid<0) {
       // We are in an invalid state. We no longer have a private key.
       Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "No private key found associated with account");
@@ -119,9 +123,11 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       // Get challenge
       try {
         
-        HttpsURLConnection c = (HttpsURLConnection) GET_CHALLENGE_URL.toURL().openConnection();
+        final URI challengeurl = URI.create(GET_CHALLENGE_URL+"?keyid="+keyid);
+        
+        HttpsURLConnection c = (HttpsURLConnection) challengeurl.toURL().openConnection();
         c.setInstanceFollowRedirects(false);// We should get the response url.
-        ByteBuffer response;
+        String response;
         URI responseUrl;
         {
           
@@ -129,7 +135,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           try {
             {
               String header = c.getHeaderField(HEADER_RESPONSE);
-              responseUrl = header==null ? GET_CHALLENGE_URL: URI.create(header);
+              responseUrl = header==null ? challengeurl: URI.create(header);
             }
             
             ReadableByteChannel in = Channels.newChannel(c.getInputStream());
@@ -142,15 +148,18 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           } finally {
             c.disconnect();
           }
-          response = sign(challenge, privateKey); 
+          final ByteBuffer responsebb = sign(challenge, privateKey);
+          response=Base64.encodeToString(responsebb.array(), responsebb.arrayOffset(), responsebb.position()+responsebb.remaining(), Base64.URL_SAFE);
         }
         c = (HttpsURLConnection) responseUrl.toURL().openConnection();
         
         try {
           c.setDoOutput(true);
-          c.setFixedLengthStreamingMode(response.remaining());
-          WritableByteChannel out = Channels.newChannel(c.getOutputStream());
+          c.setRequestMethod("POST");
+          c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
+          Writer out = new OutputStreamWriter(c.getOutputStream(), Util.UTF8);
           try {
+            out.write("response=");
             out.write(response);
           } finally {
             out.close();
@@ -169,7 +178,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
             Bundle result = new Bundle();
             result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
             result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
-            result.putString(AccountManager.KEY_AUTHTOKEN, Base64.encodeToString(cookie, BASE64_FLAGS));
+            result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
             return result;
             
             
@@ -225,16 +234,10 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     {
       int start = 0;
       int end = pPrivateKeyString.indexOf(':');
-      BigInteger x= new BigInteger(pPrivateKeyString.substring(start, end));
+      BigInteger modulus= new BigInteger(pPrivateKeyString.substring(start, end));
       start = end+1;
-      end = pPrivateKeyString.indexOf(':', start);
-      BigInteger p=new BigInteger(pPrivateKeyString.substring(start, end));;
-      start = end+1;
-      end = pPrivateKeyString.indexOf(':', start);
-      BigInteger q=new BigInteger(pPrivateKeyString.substring(start, end));;
-      start = end+1;
-      BigInteger g=new BigInteger(pPrivateKeyString.substring(start));;
-      keyspec = new DSAPrivateKeySpec(x, p, q, g);
+      BigInteger privateExponent=new BigInteger(pPrivateKeyString.substring(start));;
+      keyspec = new RSAPrivateKeySpec(modulus, privateExponent);
     }
     try {
       return keyfactory.generatePrivate(keyspec);
@@ -244,16 +247,19 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
   
-  static String encodePrivateKey(DSAPrivateKey pPrivateKey) {
+  static String encodePrivateKey(RSAPrivateKey pPrivateKey) {
     StringBuilder result = new StringBuilder();
-    result.append(pPrivateKey.getX());
-    final DSAParams params = pPrivateKey.getParams();
+    result.append(pPrivateKey.getModulus());
     result.append(':');
-    result.append(params.getP());
+    result.append(pPrivateKey.getPrivateExponent());
+    return result.toString();
+  }
+  
+  static String encodePublicKey(RSAPublicKey pPublicKey) {
+    StringBuilder result = new StringBuilder();
+    result.append(Base64.encodeToString(pPublicKey.getModulus().toByteArray(), Base64.URL_SAFE));
     result.append(':');
-    result.append(params.getQ());
-    result.append(':');
-    result.append(params.getG());
+    result.append(Base64.encodeToString(pPublicKey.getPublicExponent().toByteArray(), Base64.URL_SAFE));
     return result.toString();
   }
 

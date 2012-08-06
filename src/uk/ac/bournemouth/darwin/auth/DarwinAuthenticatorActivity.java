@@ -9,7 +9,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.security.interfaces.DSAPrivateKey;
+import java.security.interfaces.RSAPrivateKey;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -368,12 +368,12 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
       @Override
       public KeyPair call() throws Exception {
-        Log.i(TAG, "Generating a pair of DSA keys");
+        Log.i(TAG, "Generating a pair of RSA keys");
         KeyPairGenerator generator;
         try {
           generator = KeyPairGenerator.getInstance(DarwinAuthenticator.KEY_ALGORITHM);
         } catch (NoSuchAlgorithmException e) {
-          Log.e(TAG, "The DSA algorithm isn't supported on your system", e);
+          Log.e(TAG, "The RSA algorithm isn't supported on your system", e);
           return null;
         }
         generator.initialize(KEY_SIZE);
@@ -397,11 +397,11 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Charset.forName("UTF-8")));
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Util.UTF8));
         out.write("username=");
-        out.write(URLEncoder.encode(pUsername, "UTF-8"));
+        out.write(URLEncoder.encode(pUsername, Util.UTF8.name()));
         out.write("&password=");
-        out.write(URLEncoder.encode(pPassword, "UTF-8"));
+        out.write(URLEncoder.encode(pPassword, Util.UTF8.name()));
         if (publicKey!=null) {
           out.write("&pubkey=");
           out.write(publicKey);
@@ -416,7 +416,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         if (response == HttpURLConnection.HTTP_FORBIDDEN) {
           return AuthResult.INVALID_CREDENTIALS;
         } else if (response>=200 && response <400) {
-          BufferedReader in=new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+          BufferedReader in=new BufferedReader(new InputStreamReader(conn.getInputStream(), Util.UTF8));
           String line = in.readLine();
           while (line!=null) {
             int p = line.indexOf(':');
@@ -451,7 +451,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   private void storeCredentials(String pUsername, long pKeyId, KeyPair pKeypair) {
     if (pKeypair==null) { return; }
     Account account = new Account(pUsername, DarwinAuthenticator.ACCOUNT_TYPE);
-    String keyspec = DarwinAuthenticator.encodePrivateKey((DSAPrivateKey) pKeypair.getPrivate());
+    String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) pKeypair.getPrivate());
     if (! aLockedUsername) {
       Bundle bundle = new Bundle();
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
