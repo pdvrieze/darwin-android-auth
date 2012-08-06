@@ -6,6 +6,9 @@
     <uses-sdk android:minSdkVersion="9" android:targetSdkVersion="15" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS"/>
+    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS"/>
+    <uses-permission android:name="android.permission.GET_ACCOUNTS"/>
+    <uses-permission android:name="android.permission.USE_CREDENTIALS"/>
 
     <application android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"
@@ -17,12 +20,14 @@
             <meta-data android:resource="@xml/authenticator" android:name="android.accounts.AccountAuthenticator"/>
         </service>
         <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity" android:windowSoftInputMode="stateVisible|adjustResize">
-            <!-- intent-filter>
+        </activity>
+        <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="AccountInfoActivity">
+            <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER"/>
                 <action android:name="android.intent.action.MAIN"/>
-            </intent-filter -->
+            </intent-filter>
         </activity>
-
+        
     </application>
 
 </manifest>

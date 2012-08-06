@@ -455,7 +455,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     if (! aLockedUsername) {
       Bundle bundle = new Bundle();
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
-      bundle.putLong(DarwinAuthenticator.KEY_KEYID, pKeyId);
+      bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(pKeyId));
       aAccountManager.addAccountExplicitly(account, null, bundle);
     } else {
       aAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);

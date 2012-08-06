@@ -1,6 +1,7 @@
 package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.math.BigInteger;
@@ -10,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -19,6 +21,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 
+import javax.crypto.*;
 import javax.net.ssl.HttpsURLConnection;
 
 import android.accounts.*;
@@ -109,7 +112,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
     final AccountManager am = AccountManager.get(aContext);
     String privateKeyString = am.getUserData(pAccount, KEY_PRIVATEKEY);
-    PrivateKey privateKey = getPrivateKey(privateKeyString);
+    RSAPrivateKey privateKey = getPrivateKey(privateKeyString);
     String keyidString = am.getUserData(pAccount, KEY_KEYID);
     long keyid = keyidString==null ? -1l : Long.parseLong(keyidString);
     if (privateKey==null || keyid<0) {
@@ -131,25 +134,24 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         URI responseUrl;
         {
           
-          ByteBuffer challenge;
+          byte[] challenge;
           try {
             {
               String header = c.getHeaderField(HEADER_RESPONSE);
               responseUrl = header==null ? challengeurl: URI.create(header);
             }
             
-            ReadableByteChannel in = Channels.newChannel(c.getInputStream());
+            InputStream in = c.getInputStream();
             try {
-              challenge = ByteBuffer.allocate(CHALLENGE_MAX);
+              challenge = new byte[CHALLENGE_MAX];
               int count = in.read(challenge);
+              response=Base64.encodeToString(sign(challenge, count, privateKey), Base64.URL_SAFE);
             } finally {
               in.close();
             }
           } finally {
             c.disconnect();
           }
-          final ByteBuffer responsebb = sign(challenge, privateKey);
-          response=Base64.encodeToString(responsebb.array(), responsebb.arrayOffset(), responsebb.position()+responsebb.remaining(), Base64.URL_SAFE);
         }
         c = (HttpsURLConnection) responseUrl.toURL().openConnection();
         
@@ -217,12 +219,46 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return result;
   }
 
-  private ByteBuffer sign(ByteBuffer pChallenge, PrivateKey pPrivateKey) {
-    // TODO Auto-generated method stub
-    return null;
+  private byte[] sign(byte[] pChallenge, int pChallengeLen, RSAPrivateKey pPrivateKey) {
+    Cipher cipher;
+    try {
+      cipher = Cipher.getInstance("RSAWithNoPad");
+      cipher.init(Cipher.ENCRYPT_MODE, pPrivateKey);
+    } catch (NoSuchAlgorithmException e) {
+      Log.w(TAG, e);
+      return null;
+    } catch (NoSuchPaddingException e) {
+      Log.w(TAG, e);
+      return null;
+    } catch (InvalidKeyException e) {
+      Log.w(TAG, e);
+      return null;
+    }
+    
+    byte[] output = new byte[cipher.getOutputSize(pChallengeLen)];
+    
+    try {
+      int count = cipher.update(pChallenge, 0, pChallengeLen, output);
+      int extra = cipher.doFinal(output, count);
+      if (output.length>count+extra) {
+        byte[] oldoutput=output;
+        output = new byte[count+extra];
+        System.arraycopy(oldoutput, 0, output, 0, output.length);
+      }
+    } catch (ShortBufferException e) {
+      Log.e(TAG, e.getMessage(), e);
+      return null;
+    } catch (IllegalBlockSizeException e) {
+      Log.e(TAG, e.getMessage(), e);
+      return null;
+    } catch (BadPaddingException e) {
+      Log.e(TAG, e.getMessage(), e);
+      return null;
+    }
+    return output;
   }
 
-  private static PrivateKey getPrivateKey(String pPrivateKeyString) {
+  private static RSAPrivateKey getPrivateKey(String pPrivateKeyString) {
     KeyFactory keyfactory;
     try {
       keyfactory = KeyFactory.getInstance(KEY_ALGORITHM);
@@ -240,7 +276,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       keyspec = new RSAPrivateKeySpec(modulus, privateExponent);
     }
     try {
-      return keyfactory.generatePrivate(keyspec);
+      return (RSAPrivateKey) keyfactory.generatePrivate(keyspec);
     } catch (InvalidKeySpecException e) {
       Log.w(TAG, "Could not load private key", e);
       return null;
