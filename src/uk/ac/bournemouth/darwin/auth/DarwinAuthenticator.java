@@ -1,16 +1,16 @@
 package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.security.GeneralSecurityException;
-import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
@@ -19,7 +19,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 
-import javax.crypto.*;
+import javax.crypto.Cipher;
 import javax.net.ssl.HttpsURLConnection;
 
 import android.accounts.*;
@@ -31,6 +31,25 @@ import android.util.Log;
 
 
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
+  
+  
+  private static class StaleCredentialsException extends Exception {
+
+    public StaleCredentialsException() {
+      // The exception itself is enough
+    }
+
+  }
+
+  private static class KeyInfo {
+    public long keyId=-1l;
+    public RSAPrivateKey privateKey;
+
+    public KeyInfo(long pKeyId, RSAPrivateKey pPrivateKey) {
+      keyId = pKeyId;
+      privateKey = pPrivateKey;
+    }
+  }
   
   private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
   private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
@@ -116,128 +135,100 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       pResponse.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null;
     }
+    
+    try {
+      KeyInfo keyInfo = getKeyInfo(pAccount);
+      if (keyInfo==null) {
+        // We are in an invalid state. We no longer have a private key. Redo authentication.
+        initiateUpdateCredentials();
+      }
+      
+      int tries=0;
+      while (tries<AUTHTOKEN_RETRIEVE_TRY_COUNT) {
+        // Get challenge
+        try {
+          
+          URI responseUrl;
+          ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
+          responseUrl = readChallenge(keyInfo, challenge);
+          if (challenge == null) {
+            initiateUpdateCredentials(); //return null; // return to shut up compiler
+          }
+          
+          final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
+
+          HttpsURLConnection conn = (HttpsURLConnection) responseUrl.toURL().openConnection();
+          
+          try {
+            writeResponse(conn, response);
+            try {
+              ReadableByteChannel in = Channels.newChannel(conn.getInputStream());
+              try {
+                ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
+                int count = in.read(buffer);
+                if (count<0 || count>=MAX_TOKEN_SIZE) {
+                  // Can't handle that
+                }
+                byte[] cookie = new byte[buffer.position()];
+                buffer.rewind();
+                buffer.get(cookie);
+                
+                Bundle result = new Bundle();
+                result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
+                result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
+                result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
+                return result;
+                
+                
+                
+              } finally {
+                in.close();
+              }
+            } catch (IOException e) {
+              if (conn.getResponseCode()!=401) {
+                // reauthenticate
+                final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
+                intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
+                final Bundle bundle = new Bundle();
+                bundle.putParcelable(AccountManager.KEY_INTENT, intent);
+                return bundle;
+                
+              }else if (conn.getResponseCode()!=404) { // We try again if we didn't get the right code.
+                Bundle result = new Bundle();
+                result.putInt(AccountManager.KEY_ERROR_CODE, conn.getResponseCode());
+                result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
+                return result;
+              }
+            }
+          } finally {
+            conn.disconnect();
+          }
+          
+        } catch (MalformedURLException e) {
+          e.printStackTrace(); // Should never happen, it's a constant
+        } catch (IOException e) {
+          throw new NetworkErrorException(e);
+        }
+        ++tries;
+      }
+      Bundle result = new Bundle();
+      result.putString(AccountManager.KEY_ERROR_MESSAGE, "Could not get authentication key");
+      return result;
+    } catch (StaleCredentialsException e) {
+      Bundle result = new Bundle();
+      result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(pAccount));
+      return result;
+    }
+  }
+
+  private KeyInfo getKeyInfo(Account pAccount) {
     final AccountManager am = AccountManager.get(aContext);
     String privateKeyString = am.getUserData(pAccount, KEY_PRIVATEKEY);
     RSAPrivateKey privateKey = getPrivateKey(privateKeyString);
     String keyidString = am.getUserData(pAccount, KEY_KEYID);
-    long keyid = keyidString==null ? -1l : Long.parseLong(keyidString);
-    if (privateKey==null || keyid<0) {
-      // We are in an invalid state. We no longer have a private key.
-      Bundle result = new Bundle();
-      result.putString(AccountManager.KEY_ERROR_MESSAGE, "No private key found associated with account");
-      return result;
-    }
-    int tries=0;
-    while (tries<AUTHTOKEN_RETRIEVE_TRY_COUNT) {
-      // Get challenge
-      try {
-        
-        String response;
-        URI responseUrl;
-        ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-        responseUrl = readChallenge(URI.create(GET_CHALLENGE_URL+"?keyid="+keyid), challenge);
-        if (challenge!=null) {
-          final ByteBuffer responseBuffer = sign(challenge, privateKey);
-          response=Base64.encodeToString(responseBuffer.array(), responseBuffer.arrayOffset(), responseBuffer.limit(), BASE64_FLAGS);
-        } else {
-          // No challenge, update the account.
-          Bundle result = new Bundle();
-          result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(pAccount));
-          return result;
-        }
-        HttpsURLConnection c = (HttpsURLConnection) responseUrl.toURL().openConnection();
-        
-        try {
-          c.setDoOutput(true);
-          c.setRequestMethod("POST");
-          c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
-          Writer out = new OutputStreamWriter(c.getOutputStream(), Util.UTF8);
-          try {
-            out.write("response=");
-            out.write(response);
-            if (BuildConfig.DEBUG) {
-              Log.d(TAG, "Private exponent: "+privateKey.getPrivateExponent()+", priv modulo:"+privateKey.getModulus()+" Response: "+response);
-            }
-          } finally {
-            out.close();
-          }
-          try {
-            ReadableByteChannel in = Channels.newChannel(c.getInputStream());
-            try {
-              ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
-              int count = in.read(buffer);
-              if (count<0 || count>=MAX_TOKEN_SIZE) {
-                // Can't handle that
-              }
-              byte[] cookie = new byte[buffer.position()];
-              buffer.rewind();
-              buffer.get(cookie);
-              
-              Bundle result = new Bundle();
-              result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
-              result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
-              result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
-              return result;
-              
-              
-              
-            } finally {
-              in.close();
-            }
-          } catch (IOException e) {
-            if (c.getResponseCode()!=401) {
-              // reauthenticate
-              final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-              intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
-              final Bundle bundle = new Bundle();
-              bundle.putParcelable(AccountManager.KEY_INTENT, intent);
-              return bundle;
-              
-            }else if (c.getResponseCode()!=404) { // We try again if we didn't get the right code.
-              Bundle result = new Bundle();
-              result.putInt(AccountManager.KEY_ERROR_CODE, c.getResponseCode());
-              result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
-              return result;
-            }
-          }
-        } finally {
-          c.disconnect();
-        }
-        
-      } catch (MalformedURLException e) {
-        e.printStackTrace(); // Should never happen, it's a constant
-      } catch (IOException e) {
-        throw new NetworkErrorException(e);
-      }
-      ++tries;
-    }
-    Bundle result = new Bundle();
-    result.putString(AccountManager.KEY_ERROR_MESSAGE, "Could not get authentication key");
-    return result;
-  }
-
-  private URI readChallenge(final URI challengeurl, ByteBuffer challenge) throws IOException, MalformedURLException {
-    URI responseUrl;
-    HttpsURLConnection c = (HttpsURLConnection) challengeurl.toURL().openConnection();
-    c.setInstanceFollowRedirects(false);// We should get the response url.
-    try {
-      {
-        String header = c.getHeaderField(HEADER_RESPONSE);
-        responseUrl = header==null ? challengeurl: URI.create(header);
-      }
-      
-      ReadableByteChannel in = Channels.newChannel(c.getInputStream());
-      try {
-        in.read(challenge);
-      } finally {
-        in.close();
-      }
-      challenge.limit(challenge.position());
-      challenge.rewind();
-    } finally {
-      c.disconnect();
-    }
-    return responseUrl;
+    long keyId = keyidString==null ? -1l : Long.parseLong(keyidString);
+    if (privateKeyString==null || keyidString==null) { return null; }
+    return new KeyInfo(keyId, privateKey);
   }
 
   private ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
@@ -258,6 +249,52 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       Log.w(TAG, e);
       return null;
     }
+  }
+
+  private void writeResponse(HttpsURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
+    conn.setDoOutput(true);
+    conn.setRequestMethod("POST");
+    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
+    WritableByteChannel out = Channels.newChannel(conn.getOutputStream());
+    try {
+      out.write(ByteBuffer.wrap(new byte[] {'r','e','s','p','o','n','s','e','='}));
+      out.write(response);
+    } finally {
+      out.close();
+    }
+  }
+
+  private static ByteBuffer base64encode(ByteBuffer in) {
+    return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
+  }
+
+  private void initiateUpdateCredentials() throws StaleCredentialsException {
+    throw new StaleCredentialsException();
+  }
+
+  private URI readChallenge(KeyInfo pKeyInfo, ByteBuffer out) throws IOException {
+    URI responseUrl;
+    final URI url = URI.create(GET_CHALLENGE_URL.toString()+"?keyid="+pKeyInfo.keyId);
+    HttpsURLConnection c = (HttpsURLConnection) url.toURL().openConnection();
+    c.setInstanceFollowRedirects(false);// We should get the response url.
+    try {
+      {
+        String header = c.getHeaderField(HEADER_RESPONSE);
+        responseUrl = header==null ? url : URI.create(header);
+      }
+      
+      ReadableByteChannel in = Channels.newChannel(c.getInputStream());
+      try {
+        in.read(out);
+      } finally {
+        in.close();
+      }
+      out.limit(out.position());
+      out.rewind();
+    } finally {
+      c.disconnect();
+    }
+    return responseUrl;
   }
 
   private static RSAPrivateKey getPrivateKey(String pPrivateKeyString) {
