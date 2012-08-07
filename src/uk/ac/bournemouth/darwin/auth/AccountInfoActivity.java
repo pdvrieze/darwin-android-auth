@@ -69,10 +69,12 @@ public class AccountInfoActivity extends Activity {
         public void run(AccountManagerFuture<Bundle> pFuture) {
           try {
             final String token = pFuture.getResult().getString(AccountManager.KEY_AUTHTOKEN);
-            Log.v("ACCOUNTINFO", "Got an authtoken: "+token);
-            aTextView.setText("Got an auth token: "+token);
+            if (token!=null) {
+              Log.v("ACCOUNTINFO", "Got an authtoken: "+token);
+              aTextView.setText("Got an auth token: "+token);
 //            AccountManager am = AccountManager.get(AccountInfoActivity.this);
-            am.invalidateAuthToken(DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, token);
+              am.invalidateAuthToken(DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, token);
+            }
           } catch (OperationCanceledException e) {
             Log.w("ACCOUNTINFO", e);
           } catch (AuthenticatorException e) {
