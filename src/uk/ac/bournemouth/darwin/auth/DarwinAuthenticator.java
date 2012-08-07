@@ -246,15 +246,13 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       cipher = Cipher.getInstance("RSA");
       cipher.init(Cipher.ENCRYPT_MODE, pPrivateKey);
       
-      byte[] outputraw = new byte[cipher.getOutputSize(pChallenge.limit())];
+      ByteBuffer output = ByteBuffer.allocate(cipher.getOutputSize(pChallenge.limit()));
       
+      cipher.doFinal(pChallenge, output);
       
-      int count = cipher.update(pChallenge.array(), pChallenge.arrayOffset(), pChallenge.remaining(), outputraw);
-      count+=cipher.doFinal(outputraw, count);
-      
-      ByteBuffer output = ByteBuffer.wrap(outputraw, 0, count);
-//      output.limit(output.position());
-//      output.rewind();
+      // Prepare the output buffer for reading.
+      output.limit(output.position());
+      output.rewind();
       return output;
     } catch (GeneralSecurityException e) {
       Log.w(TAG, e);
