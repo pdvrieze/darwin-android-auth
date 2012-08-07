@@ -1,6 +1,8 @@
 package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.security.Provider;
 import java.security.Provider.Service;
 import java.security.Security;
@@ -11,6 +13,7 @@ import java.util.TreeMap;
 
 import android.accounts.*;
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ScrollView;
@@ -68,19 +71,30 @@ public class AccountInfoActivity extends Activity {
         @Override
         public void run(AccountManagerFuture<Bundle> pFuture) {
           try {
-            final String token = pFuture.getResult().getString(AccountManager.KEY_AUTHTOKEN);
-            if (token!=null) {
-              Log.v("ACCOUNTINFO", "Got an authtoken: "+token);
-              aTextView.setText("Got an auth token: "+token);
-//            AccountManager am = AccountManager.get(AccountInfoActivity.this);
-              am.invalidateAuthToken(DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, token);
+            final Bundle result = pFuture.getResult();
+            CharSequence newText = null;
+            if (result.containsKey(AccountManager.KEY_ERROR_CODE)|| result.containsKey(AccountManager.KEY_ERROR_MESSAGE)) {
+              newText = "error ("+result.getString(AccountManager.KEY_ERROR_CODE)+"): "+result.getString(AccountManager.KEY_ERROR_MESSAGE);
+            } else if (result.containsKey(AccountManager.KEY_INTENT)){
+              newText = "received an intent";
+              Intent intent = result.getParcelable(AccountManager.KEY_INTENT);
+              startActivity(intent);
+            } else if (result.containsKey(AccountManager.KEY_AUTHTOKEN)) {
+              final String token = result.getString(AccountManager.KEY_AUTHTOKEN);
+              if (token!=null) {
+                newText = "Got an auth token: "+token;
+                Log.v("ACCOUNTINFO", newText.toString());
+
+                am.invalidateAuthToken(DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, token);
+              }
             }
-          } catch (OperationCanceledException e) {
-            Log.w("ACCOUNTINFO", e);
-          } catch (AuthenticatorException e) {
-            Log.w("ACCOUNTINFO", e);
+            if (newText!=null) {
+              aTextView.setText(newText);
+            }
+          } catch (AccountsException e) {
+            reportException(e);
           } catch (IOException e) {
-            Log.w("ACCOUNTINFO", e);
+            reportException(e);
           }
         }
       };
@@ -89,7 +103,15 @@ public class AccountInfoActivity extends Activity {
       am.addAccount(DarwinAuthenticator.ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, null, null, this, null, null);
     }
   }
+
+  private void reportException(Throwable pThrowable) {
+    StringWriter writer = new StringWriter();
+    pThrowable.printStackTrace(new PrintWriter(writer));
+    aTextView.setText("Cancelled: "+writer.toString());
+    Log.w("ACCOUNTINFO", pThrowable);
+  }
   
+  @Override
   protected void onPause() {
     super.onPause();
     aTextView.setText("Getting auth token");
