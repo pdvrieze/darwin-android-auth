@@ -40,7 +40,7 @@ import android.widget.TextView.OnEditorActionListener;
 
 public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity implements OnClickListener, OnEditorActionListener {
 
-  private static final int KEY_SIZE = 128;
+  private static final int KEY_SIZE = 1024;
 
   private static enum AuthResult {
     CANCELLED,
