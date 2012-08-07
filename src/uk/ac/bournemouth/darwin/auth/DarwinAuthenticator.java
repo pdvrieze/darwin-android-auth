@@ -5,7 +5,6 @@ import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -148,9 +147,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         // Get challenge
         try {
           
-          URI responseUrl;
           ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          responseUrl = readChallenge(keyInfo, challenge);
+          URI responseUrl = readChallenge(keyInfo, challenge);
           if (challenge == null) {
             initiateUpdateCredentials(); //return null; // return to shut up compiler
           }
@@ -272,7 +270,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     throw new StaleCredentialsException();
   }
 
-  private URI readChallenge(KeyInfo pKeyInfo, ByteBuffer out) throws IOException {
+  private URI readChallenge(KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(GET_CHALLENGE_URL.toString()+"?keyid="+pKeyInfo.keyId);
     HttpsURLConnection c = (HttpsURLConnection) url.toURL().openConnection();
@@ -281,6 +279,13 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       {
         String header = c.getHeaderField(HEADER_RESPONSE);
         responseUrl = header==null ? url : URI.create(header);
+      }
+      
+      int responseCode = c.getResponseCode();
+      if (responseCode==403) {
+        initiateUpdateCredentials();
+      } else if (responseCode>=400) {
+        throw new HttpResponseException(c);
       }
       
       ReadableByteChannel in = Channels.newChannel(c.getInputStream());

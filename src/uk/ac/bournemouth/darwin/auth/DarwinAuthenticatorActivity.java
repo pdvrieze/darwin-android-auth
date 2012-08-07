@@ -278,7 +278,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     dialog.setCancelable(true);
     dialog.setCanceledOnTouchOutside(false);
     dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-        public void onCancel(DialogInterface dialog) {
+        @Override
+        public void onCancel(@SuppressWarnings("hiding") DialogInterface dialog) {
             Log.i(TAG, "user cancelling authentication");
             if (aAuthTask != null) {
                 aAuthTask.cancel(true);
@@ -457,6 +458,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       aAccountManager.addAccountExplicitly(account, null, bundle);
     } else {
       aAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
+      aAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(pKeyId));
     }
   }
 

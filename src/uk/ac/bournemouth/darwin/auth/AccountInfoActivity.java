@@ -23,6 +23,7 @@ import android.widget.TextView;
 public class AccountInfoActivity extends Activity {
 
   private TextView aTextView;
+  private boolean aWaitingForIntent=false;
 
   @Override
   protected void onCreate(Bundle pSavedInstanceState) {
@@ -76,9 +77,15 @@ public class AccountInfoActivity extends Activity {
             if (result.containsKey(AccountManager.KEY_ERROR_CODE)|| result.containsKey(AccountManager.KEY_ERROR_MESSAGE)) {
               newText = "error ("+result.getString(AccountManager.KEY_ERROR_CODE)+"): "+result.getString(AccountManager.KEY_ERROR_MESSAGE);
             } else if (result.containsKey(AccountManager.KEY_INTENT)){
-              newText = "received an intent";
-              Intent intent = result.getParcelable(AccountManager.KEY_INTENT);
-              startActivity(intent);
+              if (! aWaitingForIntent) {
+                newText = "received an intent";
+                aWaitingForIntent=true;
+                Intent intent = result.getParcelable(AccountManager.KEY_INTENT);
+                startActivity(intent);
+              } else {
+                aWaitingForIntent = false;
+                newText="We did not receive an updated token after starting the activity";
+              }
             } else if (result.containsKey(AccountManager.KEY_AUTHTOKEN)) {
               final String token = result.getString(AccountManager.KEY_AUTHTOKEN);
               if (token!=null) {
@@ -92,6 +99,7 @@ public class AccountInfoActivity extends Activity {
               aTextView.setText(newText);
             }
           } catch (AccountsException e) {
+            Throwable cause = e.getCause();
             reportException(e);
           } catch (IOException e) {
             reportException(e);
@@ -106,6 +114,15 @@ public class AccountInfoActivity extends Activity {
 
   private void reportException(Throwable pThrowable) {
     StringWriter writer = new StringWriter();
+//    boolean first = true;
+//    for(Throwable throwable = pThrowable; throwable!=null; throwable = throwable.getCause()) {
+//      if (first) { 
+//        first = false; 
+//      } else {
+//        writer.write("Caused by:\n");
+//      }
+//      throwable.printStackTrace(new PrintWriter(writer));
+//    }
     pThrowable.printStackTrace(new PrintWriter(writer));
     aTextView.setText("Cancelled: "+writer.toString());
     Log.w("ACCOUNTINFO", pThrowable);
