@@ -145,7 +145,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
             try {
               challenge = new byte[CHALLENGE_MAX];
               int count = in.read(challenge);
-              response=Base64.encodeToString(sign(challenge, count, privateKey), Base64.URL_SAFE);
+              response=Base64.encodeToString(sign(challenge, count, privateKey), Base64.URL_SAFE|Base64.NO_WRAP);
             } finally {
               in.close();
             }
@@ -163,27 +163,35 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           try {
             out.write("response=");
             out.write(response);
+            if (BuildConfig.DEBUG) {
+              Log.d(TAG, "Private exponent: "+privateKey.getPrivateExponent()+", priv modulo:"+privateKey.getModulus()+" Response: "+response);
+            }
           } finally {
             out.close();
           }
-          ReadableByteChannel in = Channels.newChannel(c.getInputStream());
           try {
-            ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
-            int count = in.read(buffer);
-            if (count<0 || count>=MAX_TOKEN_SIZE) {
-              // Can't handle that
+            ReadableByteChannel in = Channels.newChannel(c.getInputStream());
+            try {
+              ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
+              int count = in.read(buffer);
+              if (count<0 || count>=MAX_TOKEN_SIZE) {
+                // Can't handle that
+              }
+              byte[] cookie = new byte[buffer.position()];
+              buffer.rewind();
+              buffer.get(cookie);
+              
+              Bundle result = new Bundle();
+              result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
+              result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
+              result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
+              return result;
+              
+              
+              
+            } finally {
+              in.close();
             }
-            byte[] cookie = new byte[buffer.remaining()];
-            buffer.rewind();
-            buffer.get(cookie);
-            
-            Bundle result = new Bundle();
-            result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
-            result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
-            result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
-            return result;
-            
-            
           } catch (IOException e) {
             if (c.getResponseCode()!=401) {
               // reauthenticate
@@ -199,9 +207,6 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
               result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
               return result;
             }
-            
-          } finally {
-            in.close();
           }
         } finally {
           c.disconnect();
@@ -222,7 +227,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private byte[] sign(byte[] pChallenge, int pChallengeLen, RSAPrivateKey pPrivateKey) {
     Cipher cipher;
     try {
-      cipher = Cipher.getInstance("RSAWithNoPad");
+      cipher = Cipher.getInstance("RSA");
       cipher.init(Cipher.ENCRYPT_MODE, pPrivateKey);
     } catch (NoSuchAlgorithmException e) {
       Log.w(TAG, e);
@@ -293,9 +298,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   
   static String encodePublicKey(RSAPublicKey pPublicKey) {
     StringBuilder result = new StringBuilder();
-    result.append(Base64.encodeToString(pPublicKey.getModulus().toByteArray(), Base64.URL_SAFE));
+    result.append(pPublicKey.getModulus());
     result.append(':');
-    result.append(Base64.encodeToString(pPublicKey.getPublicExponent().toByteArray(), Base64.URL_SAFE));
+    result.append(pPublicKey.getPublicExponent());
+    if (BuildConfig.DEBUG) {
+      Log.d(TAG, "Registering public key: ("+pPublicKey.getModulus()+", "+pPublicKey.getPublicExponent()+")"+result);
+    }
     return result.toString();
   }
 

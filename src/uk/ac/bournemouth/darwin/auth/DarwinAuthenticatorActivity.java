@@ -4,12 +4,11 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -29,7 +28,6 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -42,7 +40,7 @@ import android.widget.TextView.OnEditorActionListener;
 
 public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity implements OnClickListener, OnEditorActionListener {
 
-  private static final int KEY_SIZE = 2048;
+  private static final int KEY_SIZE = 128;
 
   private static enum AuthResult {
     CANCELLED,
@@ -79,7 +77,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       }
       
       publishProgress(getText(R.string.authenticating));
-      AuthResult authResult = registerPublicKey(aUsername, password, keypair==null?null:keypair.getPublic());
+      AuthResult authResult = registerPublicKey(aUsername, password, (RSAPublicKey) (keypair==null?null:keypair.getPublic()));
       if (authResult!=AuthResult.SUCCESS) {
         return authResult;
       }
@@ -388,8 +386,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   }
 
   /** Try to authenticate by registering the public key to the server. */
-  AuthResult registerPublicKey(String pUsername, String pPassword, PublicKey pPublicKey) {
-    String publicKey = pPublicKey==null ? null : Base64.encodeToString(pPublicKey.getEncoded(), Base64.URL_SAFE|Base64.NO_WRAP);
+  AuthResult registerPublicKey(String pUsername, String pPassword, RSAPublicKey pPublicKey) {
+    String publicKey = pPublicKey==null ? null : DarwinAuthenticator.encodePublicKey(pPublicKey);
     HttpsURLConnection conn;
     try {
       conn = (HttpsURLConnection) DarwinAuthenticator.AUTHENTICATE_URL.toURL().openConnection();
