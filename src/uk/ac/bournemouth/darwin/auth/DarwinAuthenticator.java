@@ -298,9 +298,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   
   static String encodePublicKey(RSAPublicKey pPublicKey) {
     StringBuilder result = new StringBuilder();
-    result.append(pPublicKey.getModulus());
+    result.append(Base64.encodeToString(pPublicKey.getModulus().toByteArray(), Base64.URL_SAFE|Base64.NO_WRAP));
     result.append(':');
-    result.append(pPublicKey.getPublicExponent());
+    result.append(Base64.encodeToString(pPublicKey.getPublicExponent().toByteArray(), Base64.URL_SAFE|Base64.NO_WRAP));
     if (BuildConfig.DEBUG) {
       Log.d(TAG, "Registering public key: ("+pPublicKey.getModulus()+", "+pPublicKey.getPublicExponent()+")"+result);
     }
