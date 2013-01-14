@@ -22,16 +22,23 @@ import android.widget.TextView;
 
 public class AccountInfoActivity extends Activity {
 
+  private static final String KEY_TRYINGTOCREATEACCOUNT = "tryingToCreateAccount";
   private TextView aTextView;
   private boolean aWaitingForIntent=false;
+  private boolean mTryingToCreateAccount;
 
   @Override
   protected void onCreate(Bundle pSavedInstanceState) {
     super.onCreate(pSavedInstanceState);
+
+    if (pSavedInstanceState!=null) {
+      mTryingToCreateAccount = pSavedInstanceState.getBoolean(KEY_TRYINGTOCREATEACCOUNT, false);
+    }
+
     ScrollView scrollview = new ScrollView(this);
     aTextView = new TextView(this);
     scrollview.addView(aTextView);
-    
+
     StringBuilder text=new StringBuilder();
     {
       for (Provider p: Security.getProviders()) {
@@ -40,7 +47,7 @@ public class AccountInfoActivity extends Activity {
         for(Service s: p.getServices()) {
           final String type = s.getType();
           List<String> list = types.get(type);
-          if (list==null) { 
+          if (list==null) {
             list = new ArrayList<String>();
             types.put(s.getType(), list);
           }
@@ -64,11 +71,11 @@ public class AccountInfoActivity extends Activity {
     super.onResume();
     final AccountManager am=AccountManager.get(this);
     Account[] accounts = am.getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE);
-    
-    
+
+
     if (accounts.length>0) {
       AccountManagerCallback<Bundle> callback = new AccountManagerCallback<Bundle>() {
-        
+
         @Override
         public void run(AccountManagerFuture<Bundle> pFuture) {
           try {
@@ -108,16 +115,27 @@ public class AccountInfoActivity extends Activity {
       };
       am.getAuthToken(accounts[0], DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, false, callback , null);
     } else {
-      am.addAccount(DarwinAuthenticator.ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, null, null, this, null, null);
+      if (!mTryingToCreateAccount) {
+        am.addAccount(DarwinAuthenticator.ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, null, null, this, null, null);
+        mTryingToCreateAccount=true;
+      } else {
+        aTextView.setText("Account creation cancelled");
+      }
     }
+  }
+
+  @Override
+  protected void onSaveInstanceState(Bundle pOutState) {
+    super.onSaveInstanceState(pOutState);
+    pOutState.putBoolean(KEY_TRYINGTOCREATEACCOUNT, mTryingToCreateAccount);
   }
 
   private void reportException(Throwable pThrowable) {
     StringWriter writer = new StringWriter();
 //    boolean first = true;
 //    for(Throwable throwable = pThrowable; throwable!=null; throwable = throwable.getCause()) {
-//      if (first) { 
-//        first = false; 
+//      if (first) {
+//        first = false;
 //      } else {
 //        writer.write("Caused by:\n");
 //      }
@@ -127,14 +145,14 @@ public class AccountInfoActivity extends Activity {
     aTextView.setText("Cancelled: "+writer.toString());
     Log.w("ACCOUNTINFO", pThrowable);
   }
-  
+
   @Override
   protected void onPause() {
     super.onPause();
     aTextView.setText("Getting auth token");
   }
-  
-  
-  
+
+
+
 
 }

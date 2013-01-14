@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="uk.ac.bournemouth.darwin.auth"
-    android:versionCode="2"
+    android:versionCode="3"
     android:versionName="1.0">
 
     <uses-sdk android:minSdkVersion="9" android:targetSdkVersion="15" />
@@ -19,7 +19,7 @@
             </intent-filter>
             <meta-data android:resource="@xml/authenticator" android:name="android.accounts.AccountAuthenticator"/>
         </service>
-        <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity" android:windowSoftInputMode="stateVisible|adjustResize">
+        <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="DarwinAuthenticatorActivity" android:windowSoftInputMode="stateVisible|adjustResize" android:exported="true">
         </activity>
         <activity android:icon="@drawable/ic_launcher" android:label="@string/authenticator_activity_label" android:name="AccountInfoActivity">
             <intent-filter>

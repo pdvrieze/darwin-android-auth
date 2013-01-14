@@ -42,6 +42,24 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   private static final int KEY_SIZE = 1024;
 
+  static final String PARAM_USERNAME = "username";
+
+  static final String PARAM_CONFIRM = "confirm";
+
+  static final String PARAM_LOCK_USERNAME = "lockedUsername";
+
+  static final String PARAM_PASSWORD = "password";
+
+  static final String PARAM_KEYID = "keyid";
+
+  private static final String TAG = DarwinAuthenticatorActivity.class.getName();
+
+  private static final int DLG_PROGRESS = 0;
+
+  private static final int DLG_ERROR = 1;
+
+  private static final int DLG_INVALIDAUTH = 2;
+
   private static enum AuthResult {
     CANCELLED,
     SUCCESS,
@@ -137,15 +155,6 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   }
 
-  static final String PARAM_USERNAME = "username";
-  static final String PARAM_CONFIRM = "confirm";
-  static final String PARAM_LOCK_USERNAME = "lockedUsername";
-  static final String PARAM_PASSWORD = "password";
-  static final String PARAM_KEYID = "keyid";
-  private static final String TAG = DarwinAuthenticatorActivity.class.getName();
-  private static final int DLG_PROGRESS = 0;
-  private static final int DLG_ERROR = 1;
-  private static final int DLG_INVALIDAUTH = 2;
   private long aKeyId=-1l;
 //  private String aUsername;
   private boolean aConfirmCredentials;

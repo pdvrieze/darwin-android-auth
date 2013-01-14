@@ -30,8 +30,24 @@ import android.util.Log;
 
 
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
-  
-  
+
+
+  private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
+  private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
+  public static final String ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account";
+  public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
+  static final String KEY_PRIVATEKEY = "privatekey";
+  static final String KEY_KEYID = "keyid";
+  static final String KEY_PUBLICKEY = "publickey";
+  private static final String TAG = DarwinAuthenticator.class.getName();
+  static final String KEY_ALGORITHM = "RSA";
+  static final URI GET_CHALLENGE_URL = URI.create(AUTH_BASE_URL+"challenge");
+  static final URI AUTHENTICATE_URL = URI.create(AUTH_BASE_URL+"regkey");
+  private static final int CHALLENGE_MAX = 4096;
+  private static final String HEADER_RESPONSE = "X-Darwin-Respond";
+  private static final int MAX_TOKEN_SIZE = 1024;
+  private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
+  private static final int ERRNO_INVALID_TOKENTYPE = 1;
   private static class StaleCredentialsException extends Exception {
 
     public StaleCredentialsException() {
@@ -49,23 +65,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       privateKey = pPrivateKey;
     }
   }
-  
-  private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
-  private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
-  public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
-  static final String KEY_PRIVATEKEY = "privatekey";
-  static final String KEY_KEYID = "keyid";
-  static final String KEY_PUBLICKEY = "publickey";
-  private static final String TAG = DarwinAuthenticator.class.getName();
-  static final String KEY_ALGORITHM = "RSA";
-  static final URI GET_CHALLENGE_URL = URI.create(AUTH_BASE_URL+"challenge");
-  static final URI AUTHENTICATE_URL = URI.create(AUTH_BASE_URL+"regkey");
-  private static final int CHALLENGE_MAX = 4096;
-  private static final String HEADER_RESPONSE = "X-Darwin-Respond";
-  private static final int MAX_TOKEN_SIZE = 1024;
-  private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
-  public static final String ACCOUNT_TYPE = "darwin";
-  private static final int ERRNO_INVALID_TOKENTYPE = 1;
+
   private Context aContext;
 
   public DarwinAuthenticator(Context pContext) {
@@ -101,8 +101,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return bundle;
   }
 
-  
-  
+
+
   @Override
   public Bundle updateCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
     final Intent intent = getUpdateCredentialsBaseIntent(pAccount);
@@ -134,29 +134,29 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       pResponse.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null;
     }
-    
+
     try {
       KeyInfo keyInfo = getKeyInfo(pAccount);
       if (keyInfo==null) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
         initiateUpdateCredentials();
       }
-      
+
       int tries=0;
       while (tries<AUTHTOKEN_RETRIEVE_TRY_COUNT) {
         // Get challenge
         try {
-          
+
           ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
           URI responseUrl = readChallenge(keyInfo, challenge);
           if (challenge == null) {
             initiateUpdateCredentials(); //return null; // return to shut up compiler
           }
-          
+
           final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
 
           HttpsURLConnection conn = (HttpsURLConnection) responseUrl.toURL().openConnection();
-          
+
           try {
             writeResponse(conn, response);
             try {
@@ -170,15 +170,15 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 byte[] cookie = new byte[buffer.position()];
                 buffer.rewind();
                 buffer.get(cookie);
-                
+
                 Bundle result = new Bundle();
                 result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
                 result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
                 result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
                 return result;
-                
-                
-                
+
+
+
               } finally {
                 in.close();
               }
@@ -190,7 +190,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 final Bundle bundle = new Bundle();
                 bundle.putParcelable(AccountManager.KEY_INTENT, intent);
                 return bundle;
-                
+
               }else if (conn.getResponseCode()!=404) { // We try again if we didn't get the right code.
                 Bundle result = new Bundle();
                 result.putInt(AccountManager.KEY_ERROR_CODE, conn.getResponseCode());
@@ -201,7 +201,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           } finally {
             conn.disconnect();
           }
-          
+
         } catch (MalformedURLException e) {
           e.printStackTrace(); // Should never happen, it's a constant
         } catch (IOException e) {
@@ -234,11 +234,11 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     try {
       cipher = Cipher.getInstance("RSA");
       cipher.init(Cipher.ENCRYPT_MODE, pPrivateKey);
-      
+
       ByteBuffer output = ByteBuffer.allocate(cipher.getOutputSize(pChallenge.limit()));
-      
+
       cipher.doFinal(pChallenge, output);
-      
+
       // Prepare the output buffer for reading.
       output.limit(output.position());
       output.rewind();
@@ -280,14 +280,14 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         String header = c.getHeaderField(HEADER_RESPONSE);
         responseUrl = header==null ? url : URI.create(header);
       }
-      
+
       int responseCode = c.getResponseCode();
       if (responseCode==403) {
         initiateUpdateCredentials();
       } else if (responseCode>=400) {
         throw new HttpResponseException(c);
       }
-      
+
       ReadableByteChannel in = Channels.newChannel(c.getInputStream());
       try {
         in.read(out);
@@ -326,7 +326,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       return null;
     }
   }
-  
+
   static String encodePrivateKey(RSAPrivateKey pPrivateKey) {
     StringBuilder result = new StringBuilder();
     result.append(pPrivateKey.getModulus());
@@ -334,7 +334,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     result.append(pPrivateKey.getPrivateExponent());
     return result.toString();
   }
-  
+
   static String encodePublicKey(RSAPublicKey pPublicKey) {
     StringBuilder result = new StringBuilder();
     result.append(Base64.encodeToString(pPublicKey.getModulus().toByteArray(), BASE64_FLAGS));
@@ -360,5 +360,4 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, false);
     return result;
   }
-
 }
