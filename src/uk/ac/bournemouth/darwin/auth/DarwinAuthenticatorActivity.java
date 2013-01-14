@@ -48,8 +48,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     INVALID_CREDENTIALS,
     UNKNOWNFAILURE
   }
-  
-  
+
+
   public class AuthenticatorTask extends AsyncTask<String, CharSequence, AuthResult> {
 
     private String aUsername;
@@ -64,7 +64,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         try {
           keypair = aKeypair.get();
         } catch (InterruptedException e) {
-          if (isCancelled()) { 
+          if (isCancelled()) {
             return AuthResult.CANCELLED;
           } else {
             return AuthResult.UNKNOWNFAILURE;
@@ -75,7 +75,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         }
         if (isCancelled()) { return AuthResult.CANCELLED; }
       }
-      
+
       publishProgress(getText(R.string.authenticating));
       AuthResult authResult = registerPublicKey(aUsername, password, (RSAPublicKey) (keypair==null?null:keypair.getPublic()));
       if (authResult!=AuthResult.SUCCESS) {
@@ -160,7 +160,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   @Override
   protected void onCreate(Bundle pIcicle) {
     super.onCreate(pIcicle);
-    
+
     String username;
     String password=null;
     if (pIcicle!=null) {
@@ -170,34 +170,36 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       password = pIcicle.getString(PARAM_PASSWORD);
     } else {
       final Intent intent = getIntent();
-      
+
       username= intent.getStringExtra(PARAM_USERNAME);
       aLockedUsername = username!=null && username.length()>0;
       aConfirmCredentials = intent.getBooleanExtra(PARAM_CONFIRM, false);
     }
     aAccountManager = AccountManager.get(this);
-    
+
     if (Build.VERSION.SDK_INT<11) { // No actionbar
       requestWindowFeature(Window.FEATURE_LEFT_ICON);
     }
-    
+
     setContentView(R.layout.get_password);
-    
+
     aEditUsername = (EditText) findViewById(R.id.editUsername);
     if (aLockedUsername) {
       aEditUsername.setText(username);
       aEditUsername.setEnabled(false); // Fixed username, so disable editing
+    } else if (username!=null && username.length()>0) {
+      aEditUsername.setText(username);
     }
-    
+
     aEditPassword = (EditText) findViewById(R.id.editPassword);
     aEditPassword.setOnEditorActionListener(this);
     if (password!=null) { aEditPassword.setText(password); }
-    
+
     Button cancelButton = (Button) findViewById(R.id.cancelbutton);
     Button okButton = (Button) findViewById(R.id.okbutton);
     cancelButton.setOnClickListener(this);
     okButton.setOnClickListener(this);
-    
+
     if (!aConfirmCredentials) {
       aKeypair = generateKeys();
     }
@@ -292,7 +294,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     aProgressDialog = dialog;
     return dialog;
   }
-  
+
   @Override
   public boolean onEditorAction(TextView pV, int pActionId, KeyEvent pEvent) {
     if (pV.getId()!=R.id.editPassword) { return false; }
@@ -329,7 +331,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     usernameEdit.requestFocus();
   }
 
-  /** 
+  /**
    * Handle the creation of an account.
    */
   @SuppressWarnings("deprecation")
@@ -342,9 +344,9 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       aKeypair=generateKeys(); // Just call again, just to be sure.
     }
     aAuthTask.execute(username, password);
-    
+
   }
-  
+
   private Future<KeyPair> generateKeys() {
     synchronized (this) {
       if (aKeypair!=null) {
@@ -378,9 +380,9 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         generator.initialize(KEY_SIZE);
         return generator.generateKeyPair();
       }
-      
+
     });
-    
+
     Thread t = new Thread(future);
     t.start();
     return future;
@@ -409,7 +411,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           out.write("&id="+aKeyId);
         }
         out.close();
-        
+
         int response = conn.getResponseCode();
         Log.i(TAG, "Authentication response code: "+response);
         if (response == HttpURLConnection.HTTP_FORBIDDEN) {
@@ -444,7 +446,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   /**
    * Record they private key and username to the account manager.
    * @param pUsername
-   * @param pKeyId 
+   * @param pKeyId
    * @param pKeypair
    */
   private void storeCredentials(String pUsername, long pKeyId, KeyPair pKeypair) {
