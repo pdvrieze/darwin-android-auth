@@ -106,7 +106,6 @@ public class AccountInfoActivity extends Activity {
               aTextView.setText(newText);
             }
           } catch (AccountsException e) {
-            Throwable cause = e.getCause();
             reportException(e);
           } catch (IOException e) {
             reportException(e);

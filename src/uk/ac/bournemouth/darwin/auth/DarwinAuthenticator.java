@@ -48,7 +48,10 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final int MAX_TOKEN_SIZE = 1024;
   private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
   private static final int ERRNO_INVALID_TOKENTYPE = 1;
+
   private static class StaleCredentialsException extends Exception {
+
+    private static final long serialVersionUID = 7741983680648381808L;
 
     public StaleCredentialsException() {
       // The exception itself is enough

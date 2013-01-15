@@ -290,7 +290,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     dialog.setCanceledOnTouchOutside(false);
     dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
         @Override
-        public void onCancel(@SuppressWarnings("hiding") DialogInterface dialog) {
+        public void onCancel(DialogInterface dialog) {
             Log.i(TAG, "user cancelling authentication");
             if (aAuthTask != null) {
                 aAuthTask.cancel(true);
