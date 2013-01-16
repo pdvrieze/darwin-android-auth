@@ -100,7 +100,6 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         return authResult;
       }
       if (isCancelled()) { return AuthResult.CANCELLED; }
-      storeCredentials(aUsername, aKeyId, keypair);
       return AuthResult.SUCCESS;
     }
 
@@ -121,6 +120,13 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       }
       switch (pResult) {
         case SUCCESS: {
+          try {
+            storeCredentials(aUsername, aKeyId, aKeypair.get());
+          } catch (InterruptedException e) {
+            Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
+          } catch (ExecutionException e) {
+            Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
+          }
           Toast toast;
           if (aConfirmCredentials) {
             toast=Toast.makeText(DarwinAuthenticatorActivity.this, R.string.toast_update_success, Toast.LENGTH_SHORT);
