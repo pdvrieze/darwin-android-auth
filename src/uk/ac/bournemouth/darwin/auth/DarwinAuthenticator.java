@@ -21,7 +21,11 @@ import java.security.spec.RSAPrivateKeySpec;
 import javax.crypto.Cipher;
 import javax.net.ssl.HttpsURLConnection;
 
-import android.accounts.*;
+import android.accounts.AbstractAccountAuthenticator;
+import android.accounts.Account;
+import android.accounts.AccountAuthenticatorResponse;
+import android.accounts.AccountManager;
+import android.accounts.NetworkErrorException;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -143,6 +147,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       if (keyInfo==null) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
         initiateUpdateCredentials();
+        return null; // return to shut up compiler
       }
 
       int tries=0;
@@ -153,7 +158,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
           URI responseUrl = readChallenge(keyInfo, challenge);
           if (challenge == null) {
-            initiateUpdateCredentials(); //return null; // return to shut up compiler
+            initiateUpdateCredentials();
+            return null; // return to shut up compiler
           }
 
           final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
@@ -351,6 +357,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public String getAuthTokenLabel(String pAuthTokenType) {
+    Log.i(TAG, "Getting token label");
     if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       return null;
     }
