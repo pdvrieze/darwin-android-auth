@@ -13,12 +13,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-
 import javax.net.ssl.HttpsURLConnection;
-
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.Dialog;
@@ -95,7 +94,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       }
 
       publishProgress(getText(R.string.authenticating));
-      AuthResult authResult = registerPublicKey(aUsername, password, (RSAPublicKey) (keypair==null?null:keypair.getPublic()));
+      AuthResult authResult = registerPublicKey(aAuthBaseUrl, aUsername, password, (RSAPublicKey) (keypair==null?null:keypair.getPublic()));
       if (authResult!=AuthResult.SUCCESS) {
         return authResult;
       }
@@ -121,7 +120,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       switch (pResult) {
         case SUCCESS: {
           try {
-            storeCredentials(aUsername, aKeyId, aKeypair.get());
+            storeCredentials(aUsername, aKeyId, aKeypair.get(), aAuthBaseUrl);
           } catch (InterruptedException e) {
             Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
           } catch (ExecutionException e) {
@@ -172,9 +171,12 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   private EditText aEditPassword;
   private boolean aLockedUsername;
 
+  private String aAuthBaseUrl;
+
   @Override
   protected void onCreate(Bundle pIcicle) {
     super.onCreate(pIcicle);
+    PRNGFixes.ensureApplied();
 
     String username;
     String password=null;
@@ -183,13 +185,16 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       aLockedUsername = pIcicle.getBoolean(PARAM_LOCK_USERNAME);
       aConfirmCredentials = pIcicle.getBoolean(PARAM_CONFIRM);
       password = pIcicle.getString(PARAM_PASSWORD);
+      aAuthBaseUrl = pIcicle.getString(DarwinAuthenticator.KEY_AUTH_BASE);
     } else {
       final Intent intent = getIntent();
 
       username= intent.getStringExtra(PARAM_USERNAME);
       aLockedUsername = username!=null && username.length()>0;
       aConfirmCredentials = intent.getBooleanExtra(PARAM_CONFIRM, false);
+      aAuthBaseUrl = intent.getStringExtra(DarwinAuthenticator.KEY_AUTH_BASE);
     }
+    if (aAuthBaseUrl==null) { aAuthBaseUrl= DarwinAuthenticator.DEFAULT_AUTH_BASE_URL; }
     aAccountManager = AccountManager.get(this);
 
     if (Build.VERSION.SDK_INT<11) { // No actionbar
@@ -209,6 +214,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     aEditPassword = (EditText) findViewById(R.id.editPassword);
     aEditPassword.setOnEditorActionListener(this);
     if (password!=null) { aEditPassword.setText(password); }
+
 
     Button cancelButton = (Button) findViewById(R.id.cancelbutton);
     Button okButton = (Button) findViewById(R.id.okbutton);
@@ -296,7 +302,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     dialog.setCanceledOnTouchOutside(false);
     dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
         @Override
-        public void onCancel(DialogInterface dialog) {
+        public void onCancel(DialogInterface pDialog) {
             Log.i(TAG, "user cancelling authentication");
             if (aAuthTask != null) {
                 aAuthTask.cancel(true);
@@ -382,6 +388,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
     FutureTask<KeyPair> future = new FutureTask<KeyPair>(new Callable<KeyPair>() {
 
+      @SuppressLint("TrulyRandom")
       @Override
       public KeyPair call() throws Exception {
         Log.i(TAG, "Generating a pair of RSA keys");
@@ -404,11 +411,11 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   }
 
   /** Try to authenticate by registering the public key to the server. */
-  AuthResult registerPublicKey(String pUsername, String pPassword, RSAPublicKey pPublicKey) {
+  AuthResult registerPublicKey(String authBaseUrl, String pUsername, String pPassword, RSAPublicKey pPublicKey) {
     String publicKey = pPublicKey==null ? null : DarwinAuthenticator.encodePublicKey(pPublicKey);
     HttpsURLConnection conn;
     try {
-      conn = (HttpsURLConnection) DarwinAuthenticator.AUTHENTICATE_URL.toURL().openConnection();
+      conn = (HttpsURLConnection) DarwinAuthenticator.getAuthenticateUrl(authBaseUrl).toURL().openConnection();
       try {
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
@@ -464,14 +471,15 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
    * @param pKeyId
    * @param pKeypair
    */
-  private void storeCredentials(String pUsername, long pKeyId, KeyPair pKeypair) {
+  private void storeCredentials(String pUsername, long pKeyId, KeyPair pKeypair, String pAuthbase) {
     if (pKeypair==null) { return; }
     Account account = new Account(pUsername, DarwinAuthenticator.ACCOUNT_TYPE);
     String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) pKeypair.getPrivate());
     if (! aLockedUsername) {
-      Bundle bundle = new Bundle();
+      Bundle bundle = new Bundle(3);
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(pKeyId));
+      bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, pAuthbase);
       aAccountManager.addAccountExplicitly(account, null, bundle);
     } else {
       aAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);

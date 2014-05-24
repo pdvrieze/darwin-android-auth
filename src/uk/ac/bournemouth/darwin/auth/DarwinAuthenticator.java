@@ -17,15 +17,14 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
-
 import javax.crypto.Cipher;
 import javax.net.ssl.HttpsURLConnection;
-
 import android.accounts.AbstractAccountAuthenticator;
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorResponse;
 import android.accounts.AccountManager;
 import android.accounts.NetworkErrorException;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -33,11 +32,12 @@ import android.util.Base64;
 import android.util.Log;
 
 
+@SuppressLint("TrulyRandom")
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
 
   private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
-  private static final String AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
+  static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
   public static final String ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account";
   public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
   static final String KEY_PRIVATEKEY = "privatekey";
@@ -45,13 +45,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String KEY_PUBLICKEY = "publickey";
   private static final String TAG = DarwinAuthenticator.class.getName();
   static final String KEY_ALGORITHM = "RSA";
-  static final URI GET_CHALLENGE_URL = URI.create(AUTH_BASE_URL+"challenge");
-  static final URI AUTHENTICATE_URL = URI.create(AUTH_BASE_URL+"regkey");
   private static final int CHALLENGE_MAX = 4096;
   private static final String HEADER_RESPONSE = "X-Darwin-Respond";
   private static final int MAX_TOKEN_SIZE = 1024;
   private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
   private static final int ERRNO_INVALID_TOKENTYPE = 1;
+  public static final String KEY_AUTH_BASE = "authbase";
 
   private static class StaleCredentialsException extends Exception {
 
@@ -78,6 +77,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   public DarwinAuthenticator(Context pContext) {
     super(pContext);
     aContext = pContext;
+    PRNGFixes.ensureApplied();
   }
 
   @Override
@@ -89,6 +89,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
     final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
     intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
+    intent.putExtra(KEY_AUTH_BASE, getAuthBase(pOptions));
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
@@ -96,11 +97,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle confirmCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, Bundle pOptions) throws NetworkErrorException {
+    AccountManager am=AccountManager.get(aContext);
     final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
     intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_USERNAME, pAccount.name);
+    intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, true);
-    AccountManager am=AccountManager.get(aContext);
     long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
     final Bundle bundle = new Bundle();
@@ -117,6 +119,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     AccountManager am=AccountManager.get(aContext);
     long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
+    intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
@@ -141,6 +144,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       pResponse.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null;
     }
+    AccountManager am = AccountManager.get(aContext);
+    String authBaseUrl = am.getUserData(pAccount, KEY_AUTH_BASE);
+    if (authBaseUrl==null) { authBaseUrl=DEFAULT_AUTH_BASE_URL; }
 
     try {
       KeyInfo keyInfo = getKeyInfo(pAccount);
@@ -156,7 +162,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         try {
 
           ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          URI responseUrl = readChallenge(keyInfo, challenge);
+          URI responseUrl = readChallenge(authBaseUrl, keyInfo, challenge);
           if (challenge == null) {
             initiateUpdateCredentials();
             return null; // return to shut up compiler
@@ -228,6 +234,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
+  private static String getAuthBase(Bundle pOptions) {
+    String authBaseUrl = pOptions.getString(KEY_AUTH_BASE);
+    if (authBaseUrl==null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
+    return authBaseUrl;
+  }
+
   private KeyInfo getKeyInfo(Account pAccount) {
     final AccountManager am = AccountManager.get(aContext);
     String privateKeyString = am.getUserData(pAccount, KEY_PRIVATEKEY);
@@ -238,7 +250,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return new KeyInfo(keyId, privateKey);
   }
 
-  private ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
+  private static ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
     Cipher cipher;
     try {
       cipher = Cipher.getInstance("RSA");
@@ -258,7 +270,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private void writeResponse(HttpsURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
+  private static void writeResponse(HttpsURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
     conn.setDoOutput(true);
     conn.setRequestMethod("POST");
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
@@ -275,13 +287,13 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
   }
 
-  private void initiateUpdateCredentials() throws StaleCredentialsException {
+  private static void initiateUpdateCredentials() throws StaleCredentialsException {
     throw new StaleCredentialsException();
   }
 
-  private URI readChallenge(KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
+  private static URI readChallenge(String authBaseUrl, KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
-    final URI url = URI.create(GET_CHALLENGE_URL.toString()+"?keyid="+pKeyInfo.keyId);
+    final URI url = URI.create(getChallengeUrl(authBaseUrl).toString()+"?keyid="+pKeyInfo.keyId);
     HttpsURLConnection c = (HttpsURLConnection) url.toURL().openConnection();
     c.setInstanceFollowRedirects(false);// We should get the response url.
     try {
@@ -309,6 +321,14 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       c.disconnect();
     }
     return responseUrl;
+  }
+
+  static URI getChallengeUrl(String authBaseUrl) {
+    return URI.create(authBaseUrl+"challenge");
+  }
+
+  static URI getAuthenticateUrl(String pAuthBaseUrl) {
+    return URI.create(pAuthBaseUrl+"regkey");
   }
 
   private static RSAPrivateKey getPrivateKey(String pPrivateKeyString) {
