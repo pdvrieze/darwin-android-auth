@@ -394,9 +394,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       final AccountManager am = AccountManager.get(aContext);
       String authbase = am.getUserData(pAccount, KEY_AUTH_BASE);
       if (authbase==null) {
-        hasFeature = DEFAULT_AUTH_BASE_URL.equals(pFeatures[0]);
+        hasFeature = pFeatures[0]==null || DEFAULT_AUTH_BASE_URL.equals(pFeatures[0]);
       } else {
-        hasFeature = authbase.equals(pFeatures[0]);
+        hasFeature = authbase.equals(pFeatures[0])|| (pFeatures[0]==null && DEFAULT_AUTH_BASE_URL.equals(authbase));
       }
     } else {
       hasFeature = false;
