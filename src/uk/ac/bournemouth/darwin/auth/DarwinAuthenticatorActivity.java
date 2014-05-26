@@ -1,6 +1,11 @@
 package uk.ac.bournemouth.darwin.auth;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
@@ -13,7 +18,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-import javax.net.ssl.HttpsURLConnection;
+
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
@@ -33,8 +38,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.view.inputmethod.EditorInfo;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+import android.widget.Toast;
 
 
 public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity implements OnClickListener, OnEditorActionListener {
@@ -413,9 +421,9 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   /** Try to authenticate by registering the public key to the server. */
   AuthResult registerPublicKey(String authBaseUrl, String pUsername, String pPassword, RSAPublicKey pPublicKey) {
     String publicKey = pPublicKey==null ? null : DarwinAuthenticator.encodePublicKey(pPublicKey);
-    HttpsURLConnection conn;
+    HttpURLConnection conn;
     try {
-      conn = (HttpsURLConnection) DarwinAuthenticator.getAuthenticateUrl(authBaseUrl).toURL().openConnection();
+      conn = (HttpURLConnection) DarwinAuthenticator.getAuthenticateUrl(authBaseUrl).toURL().openConnection();
       try {
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
