@@ -17,8 +17,10 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
+
 import javax.crypto.Cipher;
 import javax.net.ssl.HttpsURLConnection;
+
 import android.accounts.AbstractAccountAuthenticator;
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorResponse;
@@ -250,6 +252,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return new KeyInfo(keyId, privateKey);
   }
 
+  @SuppressLint("TrulyRandom")
   private static ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
     Cipher cipher;
     try {
@@ -386,8 +389,20 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle hasFeatures(AccountAuthenticatorResponse pResponse, Account pAccount, String[] pFeatures) throws NetworkErrorException {
+    boolean hasFeature;
+    if (pFeatures.length==1) {
+      final AccountManager am = AccountManager.get(aContext);
+      String authbase = am.getUserData(pAccount, KEY_AUTH_BASE);
+      if (authbase==null) {
+        hasFeature = DEFAULT_AUTH_BASE_URL.equals(pFeatures[0]);
+      } else {
+        hasFeature = authbase.equals(pFeatures[0]);
+      }
+    } else {
+      hasFeature = false;
+    }
     final Bundle result = new Bundle();
-    result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, false);
+    result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, hasFeature);
     return result;
   }
 }
