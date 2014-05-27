@@ -2,6 +2,7 @@ package uk.ac.bournemouth.darwin.auth;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URI;
@@ -19,7 +20,6 @@ import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 
 import javax.crypto.Cipher;
-import javax.net.ssl.HttpsURLConnection;
 
 import android.accounts.AbstractAccountAuthenticator;
 import android.accounts.Account;
@@ -172,7 +172,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
           final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
 
-          HttpsURLConnection conn = (HttpsURLConnection) responseUrl.toURL().openConnection();
+          HttpURLConnection conn = (HttpURLConnection) responseUrl.toURL().openConnection();
 
           try {
             writeResponse(conn, response);
@@ -273,7 +273,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static void writeResponse(HttpsURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
+  private static void writeResponse(HttpURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
     conn.setDoOutput(true);
     conn.setRequestMethod("POST");
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
@@ -297,7 +297,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static URI readChallenge(String authBaseUrl, KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString()+"?keyid="+pKeyInfo.keyId);
-    HttpsURLConnection c = (HttpsURLConnection) url.toURL().openConnection();
+    HttpURLConnection c = (HttpURLConnection) url.toURL().openConnection();
     c.setInstanceFollowRedirects(false);// We should get the response url.
     try {
       {
