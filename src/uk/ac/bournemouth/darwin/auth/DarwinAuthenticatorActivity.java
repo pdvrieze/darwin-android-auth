@@ -211,6 +211,11 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
     setContentView(R.layout.get_password);
 
+    TextView authorityLabel = (TextView) findViewById(R.id.authorityLabel);
+    if (! DarwinAuthenticator.DEFAULT_AUTH_BASE_URL.equals(aAuthBaseUrl)) {
+      authorityLabel.setText(aAuthBaseUrl);
+    }
+
     aEditUsername = (EditText) findViewById(R.id.editUsername);
     if (aLockedUsername) {
       aEditUsername.setText(username);
