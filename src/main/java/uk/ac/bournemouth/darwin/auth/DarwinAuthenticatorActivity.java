@@ -1,24 +1,5 @@
 package uk.ac.bournemouth.darwin.auth;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URLEncoder;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
-
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
@@ -32,6 +13,7 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -43,6 +25,20 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URLEncoder;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 
 public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity implements OnClickListener, OnEditorActionListener {
@@ -67,7 +63,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   private static final int DLG_INVALIDAUTH = 2;
 
-  private static enum AuthResult {
+  private enum AuthResult {
     CANCELLED,
     SUCCESS,
     INVALID_CREDENTIALS,
@@ -129,9 +125,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         case SUCCESS: {
           try {
             storeCredentials(aUsername, aKeyId, aKeypair.get(), aAuthBaseUrl);
-          } catch (InterruptedException e) {
-            Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
-          } catch (ExecutionException e) {
+          } catch (InterruptedException | ExecutionException e) {
             Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
           }
           Toast toast;
@@ -258,6 +252,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     super.onStop();
   }
 
+  @SuppressWarnings("deprecation")
   @Override
   protected Dialog onCreateDialog(int id, Bundle args) {
     switch (id) {
@@ -399,7 +394,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       }
     }
 
-    FutureTask<KeyPair> future = new FutureTask<KeyPair>(new Callable<KeyPair>() {
+    FutureTask<KeyPair> future = new FutureTask<>(new Callable<KeyPair>() {
 
       @SuppressLint("TrulyRandom")
       @Override
@@ -480,23 +475,25 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   /**
    * Record they private key and username to the account manager.
-   * @param pUsername
-   * @param pKeyId
-   * @param pKeypair
+   * @param username The username for the account manager
+   * @param keyId The id of the key involved.
+   * @param keyPair The actual keypair to record for this user.
+   * @param authbase The url that is the basis for this authentication. One authenticator can support multiple bases with
+   *                 different accounts. This can for example be used for a debug or test server.
    */
-  private void storeCredentials(String pUsername, long pKeyId, KeyPair pKeypair, String pAuthbase) {
-    if (pKeypair==null) { return; }
-    Account account = new Account(pUsername, DarwinAuthenticator.ACCOUNT_TYPE);
-    String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) pKeypair.getPrivate());
+  private void storeCredentials(@NonNull String username, long keyId, @NonNull KeyPair keyPair, @NonNull String authbase) {
+    if (keyPair==null) { return; }
+    Account account = new Account(username, DarwinAuthenticator.ACCOUNT_TYPE);
+    String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) keyPair.getPrivate());
     if (! aLockedUsername) {
       Bundle bundle = new Bundle(3);
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
-      bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(pKeyId));
-      bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, pAuthbase);
+      bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
+      bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, authbase);
       aAccountManager.addAccountExplicitly(account, null, bundle);
     } else {
       aAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
-      aAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(pKeyId));
+      aAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
     }
   }
 

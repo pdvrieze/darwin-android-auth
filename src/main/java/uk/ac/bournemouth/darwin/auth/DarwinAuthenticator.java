@@ -1,10 +1,18 @@
 package uk.ac.bournemouth.darwin.auth;
 
+import android.accounts.*;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
+
+import javax.crypto.Cipher;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -19,22 +27,10 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 
-import javax.crypto.Cipher;
 
-import android.accounts.AbstractAccountAuthenticator;
-import android.accounts.Account;
-import android.accounts.AccountAuthenticatorResponse;
-import android.accounts.AccountManager;
-import android.accounts.NetworkErrorException;
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.util.Base64;
-import android.util.Log;
-
-
-@SuppressLint("TrulyRandom")
+/**
+ * An authenticator taht authenticates against the darwin system.
+ */
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
 
@@ -51,7 +47,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final String HEADER_RESPONSE = "X-Darwin-Respond";
   private static final int MAX_TOKEN_SIZE = 1024;
   private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
-  private static final int ERRNO_INVALID_TOKENTYPE = 1;
+  private static final int ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS;
   public static final String KEY_AUTH_BASE = "authbase";
 
   private static class StaleCredentialsException extends Exception {
@@ -65,7 +61,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   }
 
   private static class KeyInfo {
-    public long keyId=-1l;
+    public long keyId=-1L;
     public RSAPrivateKey privateKey;
 
     public KeyInfo(long pKeyId, RSAPrivateKey pPrivateKey) {
@@ -73,6 +69,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       privateKey = pPrivateKey;
     }
   }
+
+  private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
 
   private Context aContext;
 
@@ -144,7 +142,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   public Bundle getAuthToken(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
     if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       pResponse.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
-      return null;
+      return null; // the response has the error
     }
     AccountManager am = AccountManager.get(aContext);
     String authBaseUrl = am.getUserData(pAccount, KEY_AUTH_BASE);
@@ -154,8 +152,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       KeyInfo keyInfo = getKeyInfo(pAccount);
       if (keyInfo==null) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
-        initiateUpdateCredentials();
-        return null; // return to shut up compiler
+        initiateUpdateCredentials(pResponse);
+        return null; // The response has the data.
       }
 
       int tries=0;
@@ -164,10 +162,10 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         try {
 
           ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          URI responseUrl = readChallenge(authBaseUrl, keyInfo, challenge);
+          URI responseUrl = readChallenge(pResponse, authBaseUrl, keyInfo, challenge);
           if (challenge == null) {
-            initiateUpdateCredentials();
-            return null; // return to shut up compiler
+            initiateUpdateCredentials(pResponse);
+            return null; // The response has the data
           }
 
           final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
@@ -182,6 +180,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
                 int count = in.read(buffer);
                 if (count<0 || count>=MAX_TOKEN_SIZE) {
+                  pResponse.onError(ERROR_INVALID_TOKEN_SIZE, "The token size is not in a supported range");
+                  return null; // the response has the error
                   // Can't handle that
                 }
                 byte[] cookie = new byte[buffer.position()];
@@ -208,7 +208,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 bundle.putParcelable(AccountManager.KEY_INTENT, intent);
                 return bundle;
 
-              }else if (conn.getResponseCode()!=404) { // We try again if we didn't get the right code.
+              } else if (conn.getResponseCode()!=404) { // We try again if we didn't get the right code.
                 Bundle result = new Bundle();
                 result.putInt(AccountManager.KEY_ERROR_CODE, conn.getResponseCode());
                 result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
@@ -252,7 +252,6 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return new KeyInfo(keyId, privateKey);
   }
 
-  @SuppressLint("TrulyRandom")
   private static ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
     Cipher cipher;
     try {
@@ -273,7 +272,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static void writeResponse(HttpURLConnection conn, final ByteBuffer response) throws ProtocolException, IOException {
+  private static void writeResponse(HttpURLConnection conn, final ByteBuffer response) throws IOException {
     conn.setDoOutput(true);
     conn.setRequestMethod("POST");
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
@@ -290,11 +289,11 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
   }
 
-  private static void initiateUpdateCredentials() throws StaleCredentialsException {
+  private static void initiateUpdateCredentials(final AccountAuthenticatorResponse pResponse) throws StaleCredentialsException {
     throw new StaleCredentialsException();
   }
 
-  private static URI readChallenge(String authBaseUrl, KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
+  private static URI readChallenge(final AccountAuthenticatorResponse pResponse, String authBaseUrl, KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString()+"?keyid="+pKeyInfo.keyId);
     HttpURLConnection c = (HttpURLConnection) url.toURL().openConnection();
@@ -307,7 +306,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
       int responseCode = c.getResponseCode();
       if (responseCode==403) {
-        initiateUpdateCredentials();
+        initiateUpdateCredentials(pResponse);
       } else if (responseCode>=400) {
         throw new HttpResponseException(c);
       }
@@ -326,7 +325,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return responseUrl;
   }
 
-  static URI getChallengeUrl(String authBaseUrl) {
+  private static URI getChallengeUrl(String authBaseUrl) {
     return URI.create(authBaseUrl+"challenge");
   }
 
@@ -348,7 +347,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       int end = pPrivateKeyString.indexOf(':');
       BigInteger modulus= new BigInteger(pPrivateKeyString.substring(start, end));
       start = end+1;
-      BigInteger privateExponent=new BigInteger(pPrivateKeyString.substring(start));;
+      BigInteger privateExponent=new BigInteger(pPrivateKeyString.substring(start));
       keyspec = new RSAPrivateKeySpec(modulus, privateExponent);
     }
     try {

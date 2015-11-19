@@ -1,0 +1,68 @@
+apply plugin: 'com.android.application'
+
+version = '1.0.4_beta'
+description = 'Authentication library providing accounts that link against android.'
+//group = ['android' ]
+
+//sourceSets {
+//    testLocal {
+//        java.srcDir file('src/test/java')
+//        resources.srcDir file('src/test/resources')
+//    }
+//}
+
+dependencies {
+//    compile 'com.android.support:appcompat-v7:23.1.1'
+    compile 'com.android.support:support-annotations:23.1.1'
+    testCompile 'junit:junit:4.12'
+//    testCompile 'org.robolectric:robolectric:3.0'
+//    testCompile 'net.sf.kxml:kxml2:2.3.0'
+//    testLocalCompile project(':PE-diagram')
+//    testLocalCompile project(':darwinlib')
+}
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion "23.0.2"
+
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 23
+        versionCode 8
+        versionName version
+    }
+
+    signingConfigs {
+        releaseConfig {
+            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
+            storePassword System.getenv("ANDROID_STORE_PASSWD")
+            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
+            keyPassword System.getenv("ANDROID_KEY_PASSWD")
+        }
+    }
+
+    dataBinding {
+//        enabled = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            useJack false
+        }
+        release {
+            signingConfig signingConfigs.releaseConfig
+            minifyEnabled true
+            useJack true
+        }
+    }
+
+    testOptions {
+//        unitTests.returnDefaultValues = true
+    }
+}
