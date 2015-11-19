@@ -1,0 +1,6 @@
+/bin
+/gen
+/build
+/local.properties
+*.apk
+
