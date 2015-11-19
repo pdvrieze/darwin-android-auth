@@ -2,23 +2,10 @@ apply plugin: 'com.android.application'
 
 version = '1.0.4_beta'
 description = 'Authentication library providing accounts that link against android.'
-//group = ['android' ]
-
-//sourceSets {
-//    testLocal {
-//        java.srcDir file('src/test/java')
-//        resources.srcDir file('src/test/resources')
-//    }
-//}
 
 dependencies {
-//    compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'com.android.support:support-annotations:23.1.1'
     testCompile 'junit:junit:4.12'
-//    testCompile 'org.robolectric:robolectric:3.0'
-//    testCompile 'net.sf.kxml:kxml2:2.3.0'
-//    testLocalCompile project(':PE-diagram')
-//    testLocalCompile project(':darwinlib')
 }
 
 android {
@@ -60,9 +47,5 @@ android {
             minifyEnabled true
             useJack true
         }
-    }
-
-    testOptions {
-//        unitTests.returnDefaultValues = true
     }
 }
