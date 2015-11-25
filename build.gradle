@@ -29,7 +29,7 @@ android {
     }
 
     dataBinding {
-//        enabled = true
+        enabled = true
     }
 
     compileOptions {
@@ -45,7 +45,7 @@ android {
         release {
             signingConfig signingConfigs.releaseConfig
             minifyEnabled true
-            useJack true
+            useJack false
         }
     }
 }

@@ -10,6 +10,7 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -21,11 +22,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
+import uk.ac.bournemouth.darwin.auth.databinding.DarwinAuthenticatorActivityBinding;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -62,10 +63,10 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       String aUsername = i < 0 ? mAccount.name : mAccount.name.substring(0, '@');
       String password = (String) pParams[1];
       KeyPair keypair = null;
-      if (!aConfirmCredentials) {
+      if (!mConfirmCredentials) {
         publishProgress(getText(R.string.creating_keys));
         try {
-          keypair = aKeypair.get();
+          keypair = mKeypair.get();
         } catch (InterruptedException e) {
           if (isCancelled()) {
             return AuthResult.CANCELLED;
@@ -92,23 +93,23 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     @Override
     protected void onPostExecute(AuthResult pResult) {
       Log.i(TAG, "Authentication result: " + pResult.toString());
-      if (aProgressDialog != null) {
-        aProgressDialog.dismiss();
+      if (mProgressDialog != null) {
+        mProgressDialog.dismiss();
       }
       switch (pResult) {
         case SUCCESS: {
           try {
-            storeCredentials(mAccount, aKeyId, aKeypair.get(), aAuthBaseUrl);
+            storeCredentials(mAccount, mKeyId, mKeypair.get(), aAuthBaseUrl);
           } catch (InterruptedException | ExecutionException e) {
             Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e);
           }
           Toast toast;
-          if (aConfirmCredentials) {
+          if (mConfirmCredentials) {
             toast = Toast.makeText(DarwinAuthenticatorActivity.this, R.string.toast_update_success, Toast.LENGTH_SHORT);
           } else {
             toast = Toast.makeText(DarwinAuthenticatorActivity.this, R.string.toast_create_success, Toast.LENGTH_SHORT);
           }
-          aAccountManager.notifyAccountAuthenticated(mAccount);
+          mAccountManager.notifyAccountAuthenticated(mAccount);
 
           final Intent intent = new Intent();
           intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, mAccount.name);
@@ -138,8 +139,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
     @Override
     protected void onProgressUpdate(CharSequence... pValues) {
-      if (aProgressDialog != null) {
-        aProgressDialog.setMessage(pValues[0]);
+      if (mProgressDialog != null) {
+        mProgressDialog.setMessage(pValues[0]);
       }
       Log.i(TAG, "Auth progress: " + pValues[0]);
     }
@@ -147,26 +148,27 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   }
 
   public static final String PARAM_ACCOUNT = "account";
-  static final String PARAM_USERNAME = "username";
-  static final String PARAM_CONFIRM = "confirm";
-  static final String PARAM_LOCK_USERNAME = "lockedUsername";
-  static final String PARAM_PASSWORD = "password";
-  static final String PARAM_KEYID = "keyid";
+  public static final String PARAM_USERNAME = "username";
+  public static final String PARAM_CONFIRM = "confirm";
+  public static final String PARAM_LOCK_USERNAME = "lockedUsername";
+  public static final String PARAM_PASSWORD = "password";
+  public static final String PARAM_KEYID = "keyid";
+
   private static final int KEY_SIZE = 1024;
   private static final String TAG = DarwinAuthenticatorActivity.class.getName();
   private static final int DLG_PROGRESS = 0;
   private static final int DLG_ERROR = 1;
   private static final int DLG_INVALIDAUTH = 2;
-  private long aKeyId = -1l;
-  private boolean aConfirmCredentials;
-  private AuthenticatorTask aAuthTask;
-  private ProgressDialog aProgressDialog;
-  private AccountManager aAccountManager;
-  private Future<KeyPair> aKeypair;
-  private EditText aEditUsername;
-  private EditText aEditPassword;
-  private boolean aLockedUsername;
-  private Account aAccount;
+
+  private long mKeyId = -1L;
+  private boolean mConfirmCredentials;
+  private AuthenticatorTask mAuthTask;
+  private ProgressDialog mProgressDialog;
+  private AccountManager mAccountManager;
+  private Future<KeyPair> mKeypair;
+  private DarwinAuthenticatorActivityBinding mBinding;
+  private boolean mLockedUsername;
+  private Account mAccount;
 
   private String aAuthBaseUrl;
 
@@ -179,64 +181,57 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     String username;
     String password = null;
     if (pIcicle != null) {
-      aAccount = pIcicle.getParcelable(PARAM_ACCOUNT);
-      if (aAccount!=null) {
-        username = getUsername(aAccount);
+      mAccount = pIcicle.getParcelable(PARAM_ACCOUNT);
+      if (mAccount != null) {
+        username = getUsername(mAccount);
       } else {
         username = pIcicle.getString(PARAM_USERNAME);
       }
-      aLockedUsername = pIcicle.getBoolean(PARAM_LOCK_USERNAME);
-      aConfirmCredentials = pIcicle.getBoolean(PARAM_CONFIRM);
+      mLockedUsername = pIcicle.getBoolean(PARAM_LOCK_USERNAME);
+      mConfirmCredentials = pIcicle.getBoolean(PARAM_CONFIRM);
       password = pIcicle.getString(PARAM_PASSWORD);
       aAuthBaseUrl = pIcicle.getString(DarwinAuthenticator.KEY_AUTH_BASE);
     } else {
       final Intent intent = getIntent();
 
-      aAccount = intent.getParcelableExtra(PARAM_ACCOUNT);
-      if (aAccount!=null) {
-        username = getUsername(aAccount);
+      mAccount = intent.getParcelableExtra(PARAM_ACCOUNT);
+      if (mAccount != null) {
+        username = getUsername(mAccount);
       } else {
         username = intent.getStringExtra(PARAM_USERNAME);
       }
 
-      aLockedUsername = username != null && username.length() > 0;
-      aConfirmCredentials = intent.getBooleanExtra(PARAM_CONFIRM, false);
+      mLockedUsername = username != null && username.length() > 0;
+      mConfirmCredentials = intent.getBooleanExtra(PARAM_CONFIRM, false);
       aAuthBaseUrl = intent.getStringExtra(DarwinAuthenticator.KEY_AUTH_BASE);
     }
     if (aAuthBaseUrl == null) { aAuthBaseUrl = DarwinAuthenticator.DEFAULT_AUTH_BASE_URL; }
-    aAccountManager = AccountManager.get(this);
+    mAccountManager = AccountManager.get(this);
 
     if (Build.VERSION.SDK_INT < 11) { // No actionbar
       requestWindowFeature(Window.FEATURE_LEFT_ICON);
     }
 
-    setContentView(R.layout.get_password);
+    mBinding = DataBindingUtil.setContentView(this, R.layout.get_password);
 
-    TextView authorityLabel = (TextView) findViewById(R.id.authorityLabel);
     if (!DarwinAuthenticator.DEFAULT_AUTH_BASE_URL.equals(aAuthBaseUrl)) {
-      authorityLabel.setText(aAuthBaseUrl);
+      mBinding.authorityLabel.setText(aAuthBaseUrl);
     }
 
-    aEditUsername = (EditText) findViewById(R.id.editUsername);
-    if (aLockedUsername) {
-      aEditUsername.setText(username);
-      aEditUsername.setEnabled(false); // Fixed username, so disable editing
-    } else if (username != null && username.length() > 0) {
-      aEditUsername.setText(username);
+    mBinding.editUsername.setText(username);
+    if (mLockedUsername) {
+      mBinding.editUsername.setEnabled(false); // Fixed username, so disable editing
     }
 
-    aEditPassword = (EditText) findViewById(R.id.editPassword);
-    aEditPassword.setOnEditorActionListener(this);
-    if (password != null) { aEditPassword.setText(password); }
+    mBinding.editPassword.setOnEditorActionListener(this);
+    if (password != null) { mBinding.editPassword.setText(password); }
 
 
-    Button cancelButton = (Button) findViewById(R.id.cancelbutton);
-    Button okButton = (Button) findViewById(R.id.okbutton);
-    cancelButton.setOnClickListener(this);
-    okButton.setOnClickListener(this);
+    mBinding.cancelbutton.setOnClickListener(this);
+    mBinding.okbutton.setOnClickListener(this);
 
-    if (!aConfirmCredentials) {
-      aKeypair = generateKeys();
+    if (!mConfirmCredentials) {
+      mKeypair = generateKeys();
     }
   }
 
@@ -253,17 +248,17 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   private Future<KeyPair> generateKeys() {
     synchronized (this) {
-      if (aKeypair != null) {
+      if (mKeypair != null) {
         try {
-          if (aKeypair.isCancelled() || (aKeypair.isDone() && aKeypair.get() == null)) {
-            aKeypair = null; // Remove the previous pair
+          if (mKeypair.isCancelled() || (mKeypair.isDone() && mKeypair.get() == null)) {
+            mKeypair = null; // Remove the previous pair
           } else {
-            return aKeypair; // We're still in progress, just bail out.
+            return mKeypair; // We're still in progress, just bail out.
           }
         } catch (InterruptedException e) {
-          aKeypair = null;
+          mKeypair = null;
         } catch (ExecutionException e) {
-          aKeypair = null;
+          mKeypair = null;
           Log.w(TAG, "Error generating keys", e);
         }
       }
@@ -295,18 +290,20 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
 
   @Override
   protected void onSaveInstanceState(Bundle pOutState) {
-    pOutState.putString(PARAM_USERNAME, aEditUsername.getText().toString());
-    pOutState.putString(PARAM_PASSWORD, aEditPassword.getText().toString());
-    pOutState.putBoolean(PARAM_CONFIRM, aConfirmCredentials);
-    pOutState.putBoolean(PARAM_LOCK_USERNAME, aLockedUsername);
+    pOutState.putString(PARAM_USERNAME, mBinding.editUsername.getText().toString());
+    pOutState.putString(PARAM_PASSWORD, mBinding.editPassword.getText().toString());
+    pOutState.putBoolean(PARAM_CONFIRM, mConfirmCredentials);
+    pOutState.putBoolean(PARAM_LOCK_USERNAME, mLockedUsername);
+    pOutState.putString(DarwinAuthenticator.KEY_AUTH_BASE, aAuthBaseUrl);
+    pOutState.putParcelable(PARAM_ACCOUNT, mAccount);
   }
 
   @Override
   protected void onStop() {
     // No need to waste effort on generating a keypair we don't use.
     synchronized (this) {
-      if (aKeypair != null && (!aKeypair.isDone())) {
-        if (aKeypair.cancel(true)) { ; }
+      if (mKeypair != null && (!mKeypair.isDone())) {
+        if (mKeypair.cancel(true)) { ; }
       }
     }
     super.onStop();
@@ -368,15 +365,15 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       @Override
       public void onCancel(DialogInterface pDialog) {
         Log.i(TAG, "user cancelling authentication");
-        if (aAuthTask != null) {
-          aAuthTask.cancel(true);
+        if (mAuthTask != null) {
+          mAuthTask.cancel(true);
         }
       }
     });
     // We save off the progress dialog in a field so that we can dismiss
     // it later. We can't just call dismissDialog(0) because the system
     // can lose track of our dialog if there's an orientation change.
-    aProgressDialog = dialog;
+    mProgressDialog = dialog;
     return dialog;
   }
 
@@ -400,20 +397,20 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   private void startAuthentication() {
     String username = ((EditText) findViewById(R.id.editUsername)).getText().toString();
     String password = ((EditText) findViewById(R.id.editPassword)).getText().toString();
-    aAuthTask = new AuthenticatorTask();
+    mAuthTask = new AuthenticatorTask();
     showDialog(DLG_PROGRESS);
-    if (!aConfirmCredentials) {
-      aKeypair = generateKeys(); // Just call again, just to be sure.
+    if (!mConfirmCredentials) {
+      mKeypair = generateKeys(); // Just call again, just to be sure.
     }
 
     Account account;
     String accountName = getAccountName(username);
-    if (aAccount!=null && aAccount.name.equals(accountName)) {
-      account = aAccount;
+    if (mAccount != null && mAccount.name.equals(accountName)) {
+      account = mAccount;
     } else {
       account = new Account(accountName, DarwinAuthenticator.ACCOUNT_TYPE);
     }
-    aAuthTask.execute(account, password);
+    mAuthTask.execute(account, password);
 
   }
 
@@ -470,8 +467,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           out.write("&pubkey=");
           out.write(publicKey);
         }
-        if (aKeyId >= 0) {
-          out.write("&id=" + aKeyId);
+        if (mKeyId >= 0) {
+          out.write("&id=" + mKeyId);
         }
         out.close();
 
@@ -485,7 +482,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           while (line != null) {
             int p = line.indexOf(':');
             if (p >= 0 && "key".equals(line.substring(0, p).trim())) {
-              aKeyId = Long.parseLong(line.substring(p + 1).trim());
+              mKeyId = Long.parseLong(line.substring(p + 1).trim());
             }
             line = in.readLine();
           }
@@ -527,15 +524,15 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   private void storeCredentials(@NonNull Account account, long keyId, @NonNull KeyPair keyPair, @NonNull String authbase) {
     if (keyPair == null) { return; }
     String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) keyPair.getPrivate());
-    if (!aLockedUsername) {
+    if (!mLockedUsername) {
       Bundle bundle = new Bundle(3);
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
       bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, authbase);
-      aAccountManager.addAccountExplicitly(account, null, bundle);
+      mAccountManager.addAccountExplicitly(account, null, bundle);
     } else {
-      aAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
-      aAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
+      mAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
+      mAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
     }
   }
 
