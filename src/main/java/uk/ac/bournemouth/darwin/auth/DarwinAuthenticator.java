@@ -100,7 +100,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     AccountManager am=AccountManager.get(aContext);
     final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
     intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_USERNAME, pAccount.name);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
     intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, true);
     long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
@@ -120,6 +120,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
     intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
@@ -127,7 +128,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   private Intent getUpdateCredentialsBaseIntent(Account pAccount) {
     final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_USERNAME, pAccount.name);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false);
     return intent;
   }
