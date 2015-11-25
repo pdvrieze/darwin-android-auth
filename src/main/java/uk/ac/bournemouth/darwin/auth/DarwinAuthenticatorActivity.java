@@ -405,7 +405,14 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     if (!aConfirmCredentials) {
       aKeypair = generateKeys(); // Just call again, just to be sure.
     }
-    Account account = new Account(getAccountName(username), DarwinAuthenticator.ACCOUNT_TYPE);
+
+    Account account;
+    String accountName = getAccountName(username);
+    if (aAccount!=null && aAccount.name.equals(accountName)) {
+      account = aAccount;
+    } else {
+      account = new Account(accountName, DarwinAuthenticator.ACCOUNT_TYPE);
+    }
     aAuthTask.execute(account, password);
 
   }
