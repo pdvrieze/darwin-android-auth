@@ -118,7 +118,7 @@ public class AccountInfoActivity extends Activity {
         am.addAccount(DarwinAuthenticator.ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, null, null, this, null, null);
         mTryingToCreateAccount=true;
       } else {
-        aTextView.setText("Account creation cancelled");
+        aTextView.setText(R.string.lbl_account_creation_cancelled);
       }
     }
   }
@@ -141,14 +141,14 @@ public class AccountInfoActivity extends Activity {
 //      throwable.printStackTrace(new PrintWriter(writer));
 //    }
     pThrowable.printStackTrace(new PrintWriter(writer));
-    aTextView.setText("Cancelled: "+writer.toString());
+    aTextView.setText(getString(R.string.lbl_cancellation_exception_report,writer.toString()));
     Log.w("ACCOUNTINFO", pThrowable);
   }
 
   @Override
   protected void onPause() {
     super.onPause();
-    aTextView.setText("Getting auth token");
+    aTextView.setText(R.string.lbl_getting_token);
   }
 
 

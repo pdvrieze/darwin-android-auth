@@ -17,4 +17,7 @@
     <string name="dlg_title_unauth">Invalid credentials</string>
     <string name="dlg_msg_unauth">The username password combination is not valid</string>
     <string name="retry">Retry</string>
+    <string name="lbl_account_creation_cancelled">Account creation cancelled</string>
+    <string name="lbl_cancellation_exception_report">Cancelled: %s</string>
+    <string name="lbl_getting_token">Getting auth token</string>
 </resources>
