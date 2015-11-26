@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 
-version = '1.0.4_beta'
+version = '1.0.4'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
@@ -15,7 +15,7 @@ android {
     defaultConfig {
         minSdkVersion 9
         targetSdkVersion 23
-        versionCode 8
+        versionCode 9
         versionName version
     }
 

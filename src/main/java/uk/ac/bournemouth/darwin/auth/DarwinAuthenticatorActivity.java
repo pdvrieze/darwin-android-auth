@@ -4,6 +4,7 @@ import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.Dialog;
@@ -50,6 +51,13 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     SUCCESS,
     INVALID_CREDENTIALS,
     UNKNOWNFAILURE
+  }
+
+  @TargetApi(23)
+  private static class API23Helper {
+    public static void notifyAccountAuthenticated(final AccountManager accountManager, final Account account) {
+      accountManager.notifyAccountAuthenticated(account);
+    }
   }
 
   public class AuthenticatorTask extends AsyncTask<Object, CharSequence, AuthResult> {
@@ -109,7 +117,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           } else {
             toast = Toast.makeText(DarwinAuthenticatorActivity.this, R.string.toast_create_success, Toast.LENGTH_SHORT);
           }
-          mAccountManager.notifyAccountAuthenticated(mAccount);
+          notifyAccountAuthenticated(mAccountManager, mAccount);
 
           final Intent intent = new Intent();
           intent.putExtra(AccountManager.KEY_ACCOUNT_NAME, mAccount.name);
@@ -145,6 +153,12 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       Log.i(TAG, "Auth progress: " + pValues[0]);
     }
 
+  }
+
+  private static void notifyAccountAuthenticated(final AccountManager accountManager, final Account account) {
+    if (Build.VERSION.SDK_INT>=23) {
+      API23Helper.notifyAccountAuthenticated(accountManager, account);
+    }
   }
 
   public static final String PARAM_ACCOUNT = "account";
