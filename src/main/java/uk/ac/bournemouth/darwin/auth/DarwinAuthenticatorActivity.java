@@ -68,7 +68,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     protected AuthResult doInBackground(Object... pParams) {
       mAccount = (Account) pParams[0];
       int i = mAccount.name.lastIndexOf('@');
-      String aUsername = i < 0 ? mAccount.name : mAccount.name.substring(0, '@');
+      String aUsername = i < 0 ? mAccount.name : mAccount.name.substring(0, i);
       String password = (String) pParams[1];
       KeyPair keypair = null;
       if (!mConfirmCredentials) {

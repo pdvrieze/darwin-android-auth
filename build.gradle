@@ -44,7 +44,7 @@ android {
         }
         release {
             signingConfig signingConfigs.releaseConfig
-            minifyEnabled true
+//            minifyEnabled true
             useJack false
         }
     }
