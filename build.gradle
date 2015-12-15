@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 
-version = '1.0.4'
+version = '1.0.5'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
@@ -15,16 +15,16 @@ android {
     defaultConfig {
         minSdkVersion 9
         targetSdkVersion 23
-        versionCode 9
+        versionCode 10
         versionName version
     }
 
     signingConfigs {
         releaseConfig {
-            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
-            storePassword System.getenv("ANDROID_STORE_PASSWD")
-            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
-            keyPassword System.getenv("ANDROID_KEY_PASSWD")
+//            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
+//            storePassword System.getenv("ANDROID_STORE_PASSWD")
+//            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
+//            keyPassword System.getenv("ANDROID_KEY_PASSWD")
         }
     }
 
@@ -40,6 +40,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
             useJack false
         }
         release {
