@@ -19,10 +19,14 @@ package uk.ac.bournemouth.darwin.auth;
 import java.nio.charset.Charset;
 
 
-public class Util {
+/**
+ * A simple utility class that provides a constant for the UTF-8 {@link Charset}.
+ */
+public final class Util {
   
   private Util() {}
-  
-  public static final Charset UTF8=Charset.forName("UTF-8");
+
+  /** The UTF8 Character set */
+  static final Charset UTF8=Charset.forName("UTF-8");
 
 }

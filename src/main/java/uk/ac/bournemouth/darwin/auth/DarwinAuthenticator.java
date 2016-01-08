@@ -50,183 +50,174 @@ import java.security.spec.RSAPrivateKeySpec;
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
 
-  private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
-  static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
-  public static final String ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account";
-  public static final String ACCOUNT_TOKEN_TYPE="uk.ac.bournemouth.darwin.auth";
-  static final String KEY_PRIVATEKEY = "privatekey";
-  static final String KEY_KEYID = "keyid";
-  static final String KEY_PUBLICKEY = "publickey";
-  private static final String TAG = DarwinAuthenticator.class.getName();
-  static final String KEY_ALGORITHM = "RSA";
-  private static final int CHALLENGE_MAX = 4096;
-  private static final String HEADER_RESPONSE = "X-Darwin-Respond";
-  private static final int MAX_TOKEN_SIZE = 1024;
-  private static final int BASE64_FLAGS = Base64.URL_SAFE|Base64.NO_WRAP;
-  private static final int ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS;
-  public static final String KEY_AUTH_BASE = "authbase";
-
   private static class StaleCredentialsException extends Exception {
 
     private static final long serialVersionUID = 7741983680648381808L;
 
+// Object Initialization
     public StaleCredentialsException() {
       // The exception itself is enough
     }
+// Object Initialization end
 
   }
 
+  @SuppressWarnings("InstanceVariableNamingConvention")
   private static class KeyInfo {
-    public long keyId=-1L;
-    public RSAPrivateKey privateKey;
 
-    public KeyInfo(long pKeyId, RSAPrivateKey pPrivateKey) {
-      keyId = pKeyId;
-      privateKey = pPrivateKey;
+    public final long keyId;
+    public final RSAPrivateKey privateKey;
+
+// Object Initialization
+    public KeyInfo(final long keyId, final RSAPrivateKey privateKey) {
+      this.keyId = keyId;
+      this.privateKey = privateKey;
     }
+// Object Initialization end
   }
 
+  /** The account type supported by the authenticator. */
+  public static final String ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account";
+  /** The token type for darwin accounts. For now there is only this type. */
+  public static final String ACCOUNT_TOKEN_TYPE = "uk.ac.bournemouth.darwin.auth";
+  /** The argument name used to specify the base url for authentication. */
+  public static final String KEY_AUTH_BASE = "authbase";
+
+  static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
+  static final String KEY_PRIVATEKEY = "privatekey";
+  static final String KEY_KEYID = "keyid";
+  private static final String KEY_PUBLICKEY = "publickey";
+  static final String KEY_ALGORITHM = "RSA";
+
+  private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
+  private static final String TAG = DarwinAuthenticator.class.getName();
+  private static final int CHALLENGE_MAX = 4096;
+  private static final String HEADER_RESPONSE = "X-Darwin-Respond";
+  private static final int MAX_TOKEN_SIZE = 1024;
+  private static final int BASE64_FLAGS = Base64.URL_SAFE | Base64.NO_WRAP;
+  private static final int ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS;
   private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
+  private static final String ERRORMSG_UNSUPPORTED_OPERATION = "Editing properties is not supported";
+  private static final int ERROR_UNSUPPORTED_OPERATION = AccountManager.ERROR_CODE_UNSUPPORTED_OPERATION;
 
-  private Context aContext;
+  private final Context mContext;
 
-  public DarwinAuthenticator(Context pContext) {
-    super(pContext);
-    aContext = pContext;
+// Object Initialization
+
+  /**
+   * Create a new authenticator.
+   * @param context The context used to resolve context dependent values.
+   */
+  public DarwinAuthenticator(final Context context) {
+    super(context);
+    mContext = context;
     PRNGFixes.ensureApplied();
+  }
+// Object Initialization end
+
+  @Override
+  public Bundle editProperties(final AccountAuthenticatorResponse response, final String accountType) {
+    response.onError(ERROR_UNSUPPORTED_OPERATION, ERRORMSG_UNSUPPORTED_OPERATION);
+    return null;
   }
 
   @Override
-  public Bundle addAccount(AccountAuthenticatorResponse pResponse, String pAccountType, String pAuthTokenType, String[] pRequiredFeatures, Bundle pOptions) throws NetworkErrorException {
-    if (!(pAuthTokenType==null || ACCOUNT_TOKEN_TYPE.equals(pAuthTokenType))) {
+  public Bundle addAccount(final AccountAuthenticatorResponse response, final String accountType, final String authTokenType, final String[] requiredFeatures, final Bundle options) throws NetworkErrorException {
+    if (!(authTokenType == null || ACCOUNT_TOKEN_TYPE.equals(authTokenType))) {
       final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "invalid authTokenType");
       return result;
     }
-    final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
-    intent.putExtra(KEY_AUTH_BASE, getAuthBase(pOptions));
+    final Intent intent = new Intent(mContext, DarwinAuthenticatorActivity.class);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
+    intent.putExtra(KEY_AUTH_BASE, getAuthBase(options));
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
   }
 
   @Override
-  public Bundle confirmCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, Bundle pOptions) throws NetworkErrorException {
-    AccountManager am=AccountManager.get(aContext);
-    final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
-    intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
+  public Bundle confirmCredentials(final AccountAuthenticatorResponse response, final Account account, final Bundle options) throws NetworkErrorException {
+    final AccountManager am = AccountManager.get(mContext);
+    final Intent intent = new Intent(mContext, DarwinAuthenticatorActivity.class);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account);
+    intent.putExtra(KEY_AUTH_BASE, am.getUserData(account, KEY_AUTH_BASE));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, true);
-    long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
+    final long keyid = Long.parseLong(am.getUserData(account, KEY_KEYID));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
   }
 
-
-
   @Override
-  public Bundle updateCredentials(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
-    final Intent intent = getUpdateCredentialsBaseIntent(pAccount);
-    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
-    AccountManager am=AccountManager.get(aContext);
-    long keyid=Long.parseLong(am.getUserData(pAccount, KEY_KEYID));
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
-    intent.putExtra(KEY_AUTH_BASE, am.getUserData(pAccount, KEY_AUTH_BASE));
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
-    final Bundle bundle = new Bundle();
-    bundle.putParcelable(AccountManager.KEY_INTENT, intent);
-    return bundle;
-  }
-
-  private Intent getUpdateCredentialsBaseIntent(Account pAccount) {
-    final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, pAccount);
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false);
-    return intent;
-  }
-
-  @Override
-  public Bundle editProperties(AccountAuthenticatorResponse pResponse, String pAccountType) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Bundle getAuthToken(AccountAuthenticatorResponse pResponse, Account pAccount, String pAuthTokenType, Bundle pOptions) throws NetworkErrorException {
-    if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
-      pResponse.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
+  public Bundle getAuthToken(final AccountAuthenticatorResponse response, final Account account, final String authTokenType, final Bundle options) throws NetworkErrorException {
+    if (!authTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
+      response.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null; // the response has the error
     }
-    AccountManager am = AccountManager.get(aContext);
-    String authBaseUrl = am.getUserData(pAccount, KEY_AUTH_BASE);
-    if (authBaseUrl==null) { authBaseUrl=DEFAULT_AUTH_BASE_URL; }
+    final AccountManager am = AccountManager.get(mContext);
+    String authBaseUrl = am.getUserData(account, KEY_AUTH_BASE);
+    if (authBaseUrl == null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
 
     try {
-      KeyInfo keyInfo = getKeyInfo(pAccount);
-      if (keyInfo==null) {
+      final KeyInfo keyInfo = getKeyInfo(account);
+      if (keyInfo == null) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
-        initiateUpdateCredentials(pResponse);
+        initiateUpdateCredentials();
         return null; // The response has the data.
       }
 
-      int tries=0;
-      while (tries<AUTHTOKEN_RETRIEVE_TRY_COUNT) {
+      int tries = 0;
+      while (tries < AUTHTOKEN_RETRIEVE_TRY_COUNT) {
         // Get challenge
         try {
 
-          ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          URI responseUrl = readChallenge(pResponse, authBaseUrl, keyInfo, challenge);
+          final ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
+          final URI responseUrl = readChallenge(authBaseUrl, keyInfo, challenge);
           if (challenge == null) {
-            initiateUpdateCredentials(pResponse);
+            initiateUpdateCredentials();
             return null; // The response has the data
           }
 
-          final ByteBuffer response = base64encode(sign(challenge, keyInfo.privateKey));
+          final ByteBuffer responseBuffer = base64encode(sign(challenge, keyInfo.privateKey));
 
-          HttpURLConnection conn = (HttpURLConnection) responseUrl.toURL().openConnection();
+          final HttpURLConnection conn = (HttpURLConnection) responseUrl.toURL().openConnection();
 
           try {
-            writeResponse(conn, response);
+            writeResponse(conn, responseBuffer);
             try {
-              ReadableByteChannel in = Channels.newChannel(conn.getInputStream());
+              final ReadableByteChannel in = Channels.newChannel(conn.getInputStream());
               try {
-                ByteBuffer buffer =ByteBuffer.allocate(MAX_TOKEN_SIZE);
-                int count = in.read(buffer);
-                if (count<0 || count>=MAX_TOKEN_SIZE) {
-                  pResponse.onError(ERROR_INVALID_TOKEN_SIZE, "The token size is not in a supported range");
+                final ByteBuffer buffer = ByteBuffer.allocate(MAX_TOKEN_SIZE);
+                final int count = in.read(buffer);
+                if (count < 0 || count >= MAX_TOKEN_SIZE) {
+                  response.onError(ERROR_INVALID_TOKEN_SIZE, "The token size is not in a supported range");
                   return null; // the response has the error
                   // Can't handle that
                 }
-                byte[] cookie = new byte[buffer.position()];
+                final byte[] cookie = new byte[buffer.position()];
                 buffer.rewind();
                 buffer.get(cookie);
 
-                Bundle result = new Bundle();
-                result.putString(AccountManager.KEY_ACCOUNT_NAME, pAccount.name);
-                result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
-                result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
-                return result;
-
+                return createResultBundle(account, cookie);
 
 
               } finally {
                 in.close();
               }
             } catch (IOException e) {
-              if (conn.getResponseCode()!=401) {
+              if (conn.getResponseCode() != HttpURLConnection.HTTP_UNAUTHORIZED) {
                 // reauthenticate
-                final Intent intent = new Intent(aContext, DarwinAuthenticatorActivity.class);
-                intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, pResponse);
+                final Intent intent = new Intent(mContext, DarwinAuthenticatorActivity.class);
+                intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
                 final Bundle bundle = new Bundle();
                 bundle.putParcelable(AccountManager.KEY_INTENT, intent);
                 return bundle;
 
-              } else if (conn.getResponseCode()!=404) { // We try again if we didn't get the right code.
-                Bundle result = new Bundle();
+              } else if (conn.getResponseCode() != HttpURLConnection.HTTP_NOT_FOUND) { // We try again if we didn't get the right code.
+                final Bundle result = new Bundle();
                 result.putInt(AccountManager.KEY_ERROR_CODE, conn.getResponseCode());
                 result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
                 return result;
@@ -243,41 +234,68 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         }
         ++tries;
       }
-      Bundle result = new Bundle();
+      final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "Could not get authentication key");
       return result;
     } catch (StaleCredentialsException e) {
-      Bundle result = new Bundle();
-      result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(pAccount));
+      final Bundle result = new Bundle();
+      result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account));
       return result;
     }
   }
 
-  private static String getAuthBase(Bundle pOptions) {
-    String authBaseUrl = pOptions.getString(KEY_AUTH_BASE);
-    if (authBaseUrl==null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
-    return authBaseUrl;
+  private static Bundle createResultBundle(final Account account, final byte[] cookie) {
+    final Bundle result = new Bundle(3);
+    result.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
+    result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
+    result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
+    return result;
   }
 
-  private KeyInfo getKeyInfo(Account pAccount) {
-    final AccountManager am = AccountManager.get(aContext);
-    String privateKeyString = am.getUserData(pAccount, KEY_PRIVATEKEY);
-    RSAPrivateKey privateKey = getPrivateKey(privateKeyString);
-    String keyidString = am.getUserData(pAccount, KEY_KEYID);
-    long keyId = keyidString==null ? -1l : Long.parseLong(keyidString);
-    if (privateKeyString==null || keyidString==null) { return null; }
+  private KeyInfo getKeyInfo(final Account account) {
+    final AccountManager am = AccountManager.get(mContext);
+    final String privateKeyString = am.getUserData(account, KEY_PRIVATEKEY);
+    final RSAPrivateKey privateKey = getPrivateKey(privateKeyString);
+    final String keyidString = am.getUserData(account, KEY_KEYID);
+    final long keyId = keyidString == null ? -1L : Long.parseLong(keyidString);
+    if (privateKeyString == null || keyidString == null) { return null; }
     return new KeyInfo(keyId, privateKey);
   }
 
-  private static ByteBuffer sign(ByteBuffer pChallenge, RSAPrivateKey pPrivateKey) {
-    Cipher cipher;
+  private static RSAPrivateKey getPrivateKey(final String privateKeyString) {
+    final KeyFactory keyfactory;
+    try {
+      keyfactory = KeyFactory.getInstance(KEY_ALGORITHM);
+    } catch (NoSuchAlgorithmException e) {
+      Log.e(TAG, "The DSA algorithm isn't supported on your system", e);
+      return null;
+    }
+    final KeySpec keyspec;
+    {
+      final int end = privateKeyString.indexOf(':');
+      final BigInteger modulus = new BigInteger(privateKeyString.substring(0, end));
+
+      final int start = end + 1;
+      final BigInteger privateExponent = new BigInteger(privateKeyString.substring(start));
+      keyspec = new RSAPrivateKeySpec(modulus, privateExponent);
+    }
+    try {
+      return (RSAPrivateKey) keyfactory.generatePrivate(keyspec);
+    } catch (InvalidKeySpecException e) {
+      Log.w(TAG, "Could not load private key", e);
+      return null;
+    }
+  }
+
+  private static ByteBuffer sign(final ByteBuffer challenge, final RSAPrivateKey privateKey) {
+    final Cipher cipher;
     try {
       cipher = Cipher.getInstance("RSA");
-      cipher.init(Cipher.ENCRYPT_MODE, pPrivateKey);
+      cipher.init(Cipher.ENCRYPT_MODE, privateKey);
 
-      ByteBuffer output = ByteBuffer.allocate(cipher.getOutputSize(pChallenge.limit()));
+      final ByteBuffer output = ByteBuffer.allocate(cipher.getOutputSize(challenge.limit()));
 
-      cipher.doFinal(pChallenge, output);
+      cipher.doFinal(challenge, output);
 
       // Prepare the output buffer for reading.
       output.limit(output.position());
@@ -289,46 +307,46 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static void writeResponse(HttpURLConnection conn, final ByteBuffer response) throws IOException {
+  private static void writeResponse(final HttpURLConnection conn, final ByteBuffer response) throws IOException {
     conn.setDoOutput(true);
     conn.setRequestMethod("POST");
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
-    WritableByteChannel out = Channels.newChannel(conn.getOutputStream());
+    final WritableByteChannel out = Channels.newChannel(conn.getOutputStream());
     try {
-      out.write(ByteBuffer.wrap(new byte[] {'r','e','s','p','o','n','s','e','='}));
+      out.write(ByteBuffer.wrap(new byte[]{'r', 'e', 's', 'p', 'o', 'n', 's', 'e', '='}));
       out.write(response);
     } finally {
       out.close();
     }
   }
 
-  private static ByteBuffer base64encode(ByteBuffer in) {
+  private static ByteBuffer base64encode(final ByteBuffer in) {
     return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
   }
 
-  private static void initiateUpdateCredentials(final AccountAuthenticatorResponse pResponse) throws StaleCredentialsException {
+  private static void initiateUpdateCredentials() throws StaleCredentialsException {
     throw new StaleCredentialsException();
   }
 
-  private static URI readChallenge(final AccountAuthenticatorResponse pResponse, String authBaseUrl, KeyInfo pKeyInfo, ByteBuffer out) throws IOException, StaleCredentialsException {
+  private static URI readChallenge(final String authBaseUrl, final KeyInfo keyInfo, final ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
-    final URI url = URI.create(getChallengeUrl(authBaseUrl).toString()+"?keyid="+pKeyInfo.keyId);
-    HttpURLConnection c = (HttpURLConnection) url.toURL().openConnection();
-    c.setInstanceFollowRedirects(false);// We should get the response url.
+    final URI url = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId);
+    final HttpURLConnection connection = (HttpURLConnection) url.toURL().openConnection();
+    connection.setInstanceFollowRedirects(false);// We should get the response url.
     try {
       {
-        String header = c.getHeaderField(HEADER_RESPONSE);
-        responseUrl = header==null ? url : URI.create(header);
+        final String header = connection.getHeaderField(HEADER_RESPONSE);
+        responseUrl = header == null ? url : URI.create(header);
       }
 
-      int responseCode = c.getResponseCode();
-      if (responseCode==403) {
-        initiateUpdateCredentials(pResponse);
-      } else if (responseCode>=400) {
-        throw new HttpResponseException(c);
+      final int responseCode = connection.getResponseCode();
+      if (responseCode == 403) {
+        initiateUpdateCredentials();
+      } else if (responseCode >= 400) {
+        throw new HttpResponseException(connection);
       }
 
-      ReadableByteChannel in = Channels.newChannel(c.getInputStream());
+      final ReadableByteChannel in = Channels.newChannel(connection.getInputStream());
       try {
         in.read(out);
       } finally {
@@ -337,82 +355,56 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       out.limit(out.position());
       out.rewind();
     } finally {
-      c.disconnect();
+      connection.disconnect();
     }
     return responseUrl;
   }
 
-  private static URI getChallengeUrl(String authBaseUrl) {
-    return URI.create(authBaseUrl+"challenge");
-  }
-
-  static URI getAuthenticateUrl(String pAuthBaseUrl) {
-    return URI.create(pAuthBaseUrl+"regkey");
-  }
-
-  private static RSAPrivateKey getPrivateKey(String pPrivateKeyString) {
-    KeyFactory keyfactory;
-    try {
-      keyfactory = KeyFactory.getInstance(KEY_ALGORITHM);
-    } catch (NoSuchAlgorithmException e) {
-      Log.e(TAG, "The DSA algorithm isn't supported on your system", e);
-      return null;
-    }
-    KeySpec keyspec;
-    {
-      int start = 0;
-      int end = pPrivateKeyString.indexOf(':');
-      BigInteger modulus= new BigInteger(pPrivateKeyString.substring(start, end));
-      start = end+1;
-      BigInteger privateExponent=new BigInteger(pPrivateKeyString.substring(start));
-      keyspec = new RSAPrivateKeySpec(modulus, privateExponent);
-    }
-    try {
-      return (RSAPrivateKey) keyfactory.generatePrivate(keyspec);
-    } catch (InvalidKeySpecException e) {
-      Log.w(TAG, "Could not load private key", e);
-      return null;
-    }
-  }
-
-  static String encodePrivateKey(RSAPrivateKey pPrivateKey) {
-    StringBuilder result = new StringBuilder();
-    result.append(pPrivateKey.getModulus());
-    result.append(':');
-    result.append(pPrivateKey.getPrivateExponent());
-    return result.toString();
-  }
-
-  static String encodePublicKey(RSAPublicKey pPublicKey) {
-    StringBuilder result = new StringBuilder();
-    result.append(Base64.encodeToString(pPublicKey.getModulus().toByteArray(), BASE64_FLAGS));
-    result.append(':');
-    result.append(Base64.encodeToString(pPublicKey.getPublicExponent().toByteArray(), BASE64_FLAGS));
-    if (BuildConfig.DEBUG) {
-      Log.d(TAG, "Registering public key: ("+pPublicKey.getModulus()+", "+pPublicKey.getPublicExponent()+")"+result);
-    }
-    return result.toString();
+  @SuppressWarnings("StringConcatenationMissingWhitespace")
+  private static URI getChallengeUrl(final String authBaseUrl) {
+    return URI.create(authBaseUrl + "challenge");
   }
 
   @Override
-  public String getAuthTokenLabel(String pAuthTokenType) {
+  public String getAuthTokenLabel(final String authTokenType) {
     Log.i(TAG, "Getting token label");
-    if (!pAuthTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
+    if (!authTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       return null;
     }
-    return aContext.getString(R.string.authenticator_label);
+    return mContext.getString(R.string.authenticator_label);
   }
 
   @Override
-  public Bundle hasFeatures(AccountAuthenticatorResponse pResponse, Account pAccount, String[] pFeatures) throws NetworkErrorException {
-    boolean hasFeature;
-    if (pFeatures.length==1) {
-      final AccountManager am = AccountManager.get(aContext);
-      String authbase = am.getUserData(pAccount, KEY_AUTH_BASE);
-      if (authbase==null) {
-        hasFeature = pFeatures[0]==null || DEFAULT_AUTH_BASE_URL.equals(pFeatures[0]);
+  public Bundle updateCredentials(final AccountAuthenticatorResponse response, final Account account, final String authTokenType, final Bundle options) throws NetworkErrorException {
+    final Intent intent = getUpdateCredentialsBaseIntent(account);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
+    final AccountManager am = AccountManager.get(mContext);
+    final long keyid = Long.parseLong(am.getUserData(account, KEY_KEYID));
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
+    intent.putExtra(KEY_AUTH_BASE, am.getUserData(account, KEY_AUTH_BASE));
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account);
+    final Bundle bundle = new Bundle();
+    bundle.putParcelable(AccountManager.KEY_INTENT, intent);
+    return bundle;
+  }
+
+  private Intent getUpdateCredentialsBaseIntent(final Account account) {
+    final Intent intent = new Intent(mContext, DarwinAuthenticatorActivity.class);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account);
+    intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false);
+    return intent;
+  }
+
+  @Override
+  public Bundle hasFeatures(final AccountAuthenticatorResponse response, final Account account, final String[] features) throws NetworkErrorException {
+    final boolean hasFeature;
+    if (features.length == 1) {
+      final AccountManager am = AccountManager.get(mContext);
+      final String authbase = am.getUserData(account, KEY_AUTH_BASE);
+      if (authbase == null) {
+        hasFeature = features[0] == null || DEFAULT_AUTH_BASE_URL.equals(features[0]);
       } else {
-        hasFeature = authbase.equals(pFeatures[0])|| (pFeatures[0]==null && DEFAULT_AUTH_BASE_URL.equals(authbase));
+        hasFeature = authbase.equals(features[0]) || (features[0] == null && DEFAULT_AUTH_BASE_URL.equals(authbase));
       }
     } else {
       hasFeature = false;
@@ -420,5 +412,35 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     final Bundle result = new Bundle();
     result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, hasFeature);
     return result;
+  }
+
+  private static String getAuthBase(final Bundle options) {
+    String authBaseUrl = options.getString(KEY_AUTH_BASE);
+    if (authBaseUrl == null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
+    return authBaseUrl;
+  }
+
+  @SuppressWarnings("StringConcatenationMissingWhitespace")
+  static URI getAuthenticateUrl(final String authBaseUrl) {
+    return URI.create(authBaseUrl + "regkey");
+  }
+
+  static String encodePrivateKey(final RSAPrivateKey privateKey) {
+    final StringBuilder result = new StringBuilder();
+    result.append(privateKey.getModulus());
+    result.append(':');
+    result.append(privateKey.getPrivateExponent());
+    return result.toString();
+  }
+
+  static String encodePublicKey(final RSAPublicKey publicKey) {
+    final StringBuilder result = new StringBuilder();
+    result.append(Base64.encodeToString(publicKey.getModulus().toByteArray(), BASE64_FLAGS));
+    result.append(':');
+    result.append(Base64.encodeToString(publicKey.getPublicExponent().toByteArray(), BASE64_FLAGS));
+    if (BuildConfig.DEBUG) {
+      Log.d(TAG, "Registering public key: (" + publicKey.getModulus() + ", " + publicKey.getPublicExponent() + ')' + result);
+    }
+    return result.toString();
   }
 }

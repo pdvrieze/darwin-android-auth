@@ -20,6 +20,7 @@ import android.accounts.*;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -36,48 +37,51 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 
+/**
+ * An activity that allows some information on the account to be displayed.
+ */
 public class AccountInfoActivity extends Activity {
 
   private static final String KEY_TRYINGTOCREATEACCOUNT = "tryingToCreateAccount";
-  private TextView aTextView;
-  private boolean aWaitingForIntent=false;
+  private TextView mTextView;
+  private boolean mWaitingForIntent =false;
   private boolean mTryingToCreateAccount;
 
   @Override
-  protected void onCreate(Bundle pSavedInstanceState) {
-    super.onCreate(pSavedInstanceState);
+  protected void onCreate(final Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-    if (pSavedInstanceState!=null) {
-      mTryingToCreateAccount = pSavedInstanceState.getBoolean(KEY_TRYINGTOCREATEACCOUNT, false);
+    if (savedInstanceState!=null) {
+      mTryingToCreateAccount = savedInstanceState.getBoolean(KEY_TRYINGTOCREATEACCOUNT, false);
     }
 
-    ScrollView scrollview = new ScrollView(this);
-    aTextView = new TextView(this);
-    scrollview.addView(aTextView);
+    final ScrollView scrollview = new ScrollView(this);
+    mTextView = new TextView(this);
+    scrollview.addView(mTextView);
 
-    StringBuilder text=new StringBuilder();
+    final StringBuilder text=new StringBuilder();
     {
-      for (Provider p: Security.getProviders()) {
-        TreeMap<String,List<String>> types = new TreeMap<String, List<String>>();
+      for (final Provider p: Security.getProviders()) {
+        final TreeMap<String,List<String>> types = new TreeMap<>();
         text.append("Provider: ").append(p.getName()).append('\n');
-        for(Service s: p.getServices()) {
-          final String type = s.getType();
+        for(final Service service: p.getServices()) {
+          final String type = service.getType();
           List<String> list = types.get(type);
           if (list==null) {
-            list = new ArrayList<String>();
-            types.put(s.getType(), list);
+            list = new ArrayList<>();
+            types.put(service.getType(), list);
           }
-          list.add(s.getAlgorithm());
+          list.add(service.getAlgorithm());
         }
-        for(Entry<String, List<String>> type: types.entrySet()) {
-          for (String algorithm: type.getValue()) {
+        for(final Entry<String, List<String>> type: types.entrySet()) {
+          for (final String algorithm: type.getValue()) {
             text.append("  Service type:").append(type.getKey())
             .append(" algorithm:").append(algorithm).append('\n');
           }
         }
       }
     }
-    aTextView.setText(text);
+    mTextView.setText(text);
     setContentView(scrollview);
   }
 
@@ -86,27 +90,27 @@ public class AccountInfoActivity extends Activity {
   protected void onResume() {
     super.onResume();
     final AccountManager am=AccountManager.get(this);
-    Account[] accounts = am.getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE);
+    final Account[] accounts = am.getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE);
 
 
     if (accounts.length>0) {
-      AccountManagerCallback<Bundle> callback = new AccountManagerCallback<Bundle>() {
+      final AccountManagerCallback<Bundle> callback = new AccountManagerCallback<Bundle>() {
 
         @Override
-        public void run(AccountManagerFuture<Bundle> pFuture) {
+        public void run(final AccountManagerFuture<Bundle> future) {
           try {
-            final Bundle result = pFuture.getResult();
+            final Bundle result = future.getResult();
             CharSequence newText = null;
             if (result.containsKey(AccountManager.KEY_ERROR_CODE)|| result.containsKey(AccountManager.KEY_ERROR_MESSAGE)) {
               newText = "error ("+result.getString(AccountManager.KEY_ERROR_CODE)+"): "+result.getString(AccountManager.KEY_ERROR_MESSAGE);
             } else if (result.containsKey(AccountManager.KEY_INTENT)){
-              if (! aWaitingForIntent) {
+              if (!mWaitingForIntent) {
                 newText = "received an intent";
-                aWaitingForIntent=true;
-                Intent intent = result.getParcelable(AccountManager.KEY_INTENT);
+                mWaitingForIntent =true;
+                final Intent intent = result.getParcelable(AccountManager.KEY_INTENT);
                 startActivity(intent);
               } else {
-                aWaitingForIntent = false;
+                mWaitingForIntent = false;
                 newText="We did not receive an updated token after starting the activity";
               }
             } else if (result.containsKey(AccountManager.KEY_AUTHTOKEN)) {
@@ -119,11 +123,9 @@ public class AccountInfoActivity extends Activity {
               }
             }
             if (newText!=null) {
-              aTextView.setText(newText);
+              mTextView.setText(newText);
             }
-          } catch (AccountsException e) {
-            reportException(e);
-          } catch (IOException e) {
+          } catch (AccountsException | IOException e) {
             reportException(e);
           }
         }
@@ -134,37 +136,28 @@ public class AccountInfoActivity extends Activity {
         am.addAccount(DarwinAuthenticator.ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, null, null, this, null, null);
         mTryingToCreateAccount=true;
       } else {
-        aTextView.setText(R.string.lbl_account_creation_cancelled);
+        mTextView.setText(R.string.lbl_account_creation_cancelled);
       }
     }
   }
 
   @Override
-  protected void onSaveInstanceState(Bundle pOutState) {
-    super.onSaveInstanceState(pOutState);
-    pOutState.putBoolean(KEY_TRYINGTOCREATEACCOUNT, mTryingToCreateAccount);
+  protected void onSaveInstanceState(@NonNull final Bundle outState) {
+    super.onSaveInstanceState(outState);
+    outState.putBoolean(KEY_TRYINGTOCREATEACCOUNT, mTryingToCreateAccount);
   }
 
-  private void reportException(Throwable pThrowable) {
-    StringWriter writer = new StringWriter();
-//    boolean first = true;
-//    for(Throwable throwable = pThrowable; throwable!=null; throwable = throwable.getCause()) {
-//      if (first) {
-//        first = false;
-//      } else {
-//        writer.write("Caused by:\n");
-//      }
-//      throwable.printStackTrace(new PrintWriter(writer));
-//    }
-    pThrowable.printStackTrace(new PrintWriter(writer));
-    aTextView.setText(getString(R.string.lbl_cancellation_exception_report,writer.toString()));
-    Log.w("ACCOUNTINFO", pThrowable);
+  private void reportException(final Throwable throwable) {
+    final StringWriter writer = new StringWriter();
+    throwable.printStackTrace(new PrintWriter(writer));
+    mTextView.setText(getString(R.string.lbl_cancellation_exception_report, writer.toString()));
+    Log.w("ACCOUNTINFO", throwable);
   }
 
   @Override
   protected void onPause() {
     super.onPause();
-    aTextView.setText(R.string.lbl_getting_token);
+    mTextView.setText(R.string.lbl_getting_token);
   }
 
 

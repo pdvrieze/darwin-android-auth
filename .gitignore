@@ -2,5 +2,5 @@
 /gen
 /build
 /local.properties
-*.apk
-
+/*.apk
+/*.iml

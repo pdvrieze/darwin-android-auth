@@ -21,22 +21,22 @@ import android.content.Intent;
 import android.os.IBinder;
 
 
+/**
+ * The service that makes the authenticator available.
+ */
 public class DarwinAuthenticatorService extends Service {
 
-  private DarwinAuthenticator aAuthenticator;
+  private DarwinAuthenticator mAuthenticator;
 
   @Override
   public void onCreate() {
     super.onCreate();
-//    if (BuildConfig.DEBUG) {
-//      Debug.waitForDebugger();
-//    }
-    aAuthenticator = new DarwinAuthenticator(this);
+    mAuthenticator = new DarwinAuthenticator(this);
   }
 
   @Override
-  public IBinder onBind(Intent pArg0) {
-    return aAuthenticator.getIBinder();
+  public IBinder onBind(final Intent arg0) {
+    return mAuthenticator.getIBinder();
   }
 
 }

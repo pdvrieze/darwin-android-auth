@@ -41,14 +41,14 @@ android {
         versionName version
     }
 
-    signingConfigs {
-        releaseConfig {
+//    signingConfigs {
+//        releaseConfig {
 //            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
 //            storePassword System.getenv("ANDROID_STORE_PASSWD")
 //            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
 //            keyPassword System.getenv("ANDROID_KEY_PASSWD")
-        }
-    }
+//        }
+//    }
 
     dataBinding {
         enabled = true
@@ -66,7 +66,7 @@ android {
             useJack false
         }
         release {
-            signingConfig signingConfigs.releaseConfig
+//            signingConfig signingConfigs.releaseConfig
             minifyEnabled true
             shrinkResources true
             useJack false
