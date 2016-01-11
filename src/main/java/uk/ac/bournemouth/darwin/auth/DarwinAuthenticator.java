@@ -123,6 +123,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle addAccount(final AccountAuthenticatorResponse response, final String accountType, final String authTokenType, final String[] requiredFeatures, final Bundle options) throws NetworkErrorException {
+    Log.i(TAG, "addAccount() called with: " + "response = [" + response + "], accountType = [" + accountType + "], authTokenType = [" + authTokenType + "], requiredFeatures = [" + requiredFeatures + "], options = [" + options + "]");
     if (!(authTokenType == null || ACCOUNT_TOKEN_TYPE.equals(authTokenType))) {
       final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "invalid authTokenType");
@@ -397,6 +398,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle hasFeatures(final AccountAuthenticatorResponse response, final Account account, final String[] features) throws NetworkErrorException {
+    Log.i(TAG, "hasFeatures() called with: " + "response = [" + response + "], account = [" + account + "], features = [" + features + "]");
     final boolean hasFeature;
     if (features.length == 1) {
       final AccountManager am = AccountManager.get(mContext);
@@ -411,6 +413,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
     final Bundle result = new Bundle();
     result.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, hasFeature);
+    Log.i(TAG, "hasFeatures() returned: " + result+ " -> "+hasFeature);
     return result;
   }
 
@@ -438,7 +441,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     result.append(Base64.encodeToString(publicKey.getModulus().toByteArray(), BASE64_FLAGS));
     result.append(':');
     result.append(Base64.encodeToString(publicKey.getPublicExponent().toByteArray(), BASE64_FLAGS));
-    if (BuildConfig.DEBUG) {
+    if (Log.isLoggable(TAG, Log.DEBUG)) {
       Log.d(TAG, "Registering public key: (" + publicKey.getModulus() + ", " + publicKey.getPublicExponent() + ')' + result);
     }
     return result.toString();
