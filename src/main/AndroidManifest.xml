@@ -41,6 +41,15 @@
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator" />
         </service>
+        <receiver
+                android:name=".UninstallReceiver"
+                android:priority="999"
+                android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_REMOVED"/>
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name="DarwinAuthenticatorActivity"
@@ -55,6 +64,11 @@
             android:icon="@mipmap/ic_launcher"
             android:label="@string/authenticator_activity_label" >
         </activity>
+        <activity android:name=".AuthTokenPermissionActivity"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="Permission for Darwin"
+                  android:exported="true"
+                  android:excludeFromRecents="true" />
     </application>
 
 </manifest>

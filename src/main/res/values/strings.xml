@@ -16,7 +16,8 @@
 
 <resources>
     <string name="app_name">Darwin-Auth</string>
-    <string name="authenticator_label">Darwin full access</string>
+    <string name="authenticator_label">Darwin Account</string>
+    <string name="authtoken_label">full access</string>
     <string name="authenticator_activity_label">Authenticate to Darwin</string>
     <string name="dialogintro">Please provide your login credentials for the darwin server.</string>
     <string name="usernamelabel">Your username on darwin:</string>
@@ -36,4 +37,7 @@
     <string name="lbl_account_creation_cancelled">Account creation cancelled</string>
     <string name="lbl_cancellation_exception_report">Cancelled: %s</string>
     <string name="lbl_getting_token">Getting auth token</string>
+    <string name="lbl_permissionRequest">Do you want to allow <b>%s</b> full access to the following darwin account?</string>
+    <string name="btn_no">No</string>
+    <string name="btn_yes">Yes</string>
 </resources>

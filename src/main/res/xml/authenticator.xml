@@ -19,6 +19,7 @@
     android:accountType="uk.ac.bournemouth.darwin.account"
     android:icon="@mipmap/ic_launcher"
     android:label="@string/authenticator_label"
+    android:customTokens="true"
  />
 <!--     android:accountPreferences="@xml/account_preferences"
  -->

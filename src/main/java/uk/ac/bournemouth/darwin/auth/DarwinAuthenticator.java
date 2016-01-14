@@ -20,6 +20,9 @@ import android.accounts.*;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Debug;
+import android.os.Process;
+import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Base64;
 import android.util.Log;
 
@@ -42,6 +45,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
+import java.util.Date;
 
 
 /**
@@ -86,11 +90,13 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
   static final String KEY_PRIVATEKEY = "privatekey";
   static final String KEY_KEYID = "keyid";
+  static final String KEY_ACCOUNT = "account";
   private static final String KEY_PUBLICKEY = "publickey";
-  static final String KEY_ALGORITHM = "RSA";
 
+  static final String KEY_ALGORITHM = "RSA";
   private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
-  private static final String TAG = DarwinAuthenticator.class.getName();
+
+  private static final String TAG = "DarwinAuthenticator";
   private static final int CHALLENGE_MAX = 4096;
   private static final String HEADER_RESPONSE = "X-Darwin-Respond";
   private static final int MAX_TOKEN_SIZE = 1024;
@@ -99,6 +105,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
   private static final String ERRORMSG_UNSUPPORTED_OPERATION = "Editing properties is not supported";
   private static final int ERROR_UNSUPPORTED_OPERATION = AccountManager.ERROR_CODE_UNSUPPORTED_OPERATION;
+  private static final String KEY_ALLOWED_UIDS = "allowedUids";
+  private static final SimpleStringSplitter COMMA_SPLITTER = new SimpleStringSplitter(',');
+  private static final long EXPIRY_TIMEOUT = 1000 * 60 * 30; // 30 minutes
 
   private final Context mContext;
 
@@ -154,10 +163,15 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle getAuthToken(final AccountAuthenticatorResponse response, final Account account, final String authTokenType, final Bundle options) throws NetworkErrorException {
+    Log.d(TAG, "getAuthToken() called with: " + "response = [" + response + "], account = [" + account + "], authTokenType = [" + authTokenType + "], options = [" + toString(options) + "]");
     if (!authTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       response.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null; // the response has the error
     }
+    if (! isAuthTokenAllowed(response, account, options)) {
+      return requestAuthTokenPermission(response, account, options);
+    }
+
     final AccountManager am = AccountManager.get(mContext);
     String authBaseUrl = am.getUserData(account, KEY_AUTH_BASE);
     if (authBaseUrl == null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
@@ -166,7 +180,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       final KeyInfo keyInfo = getKeyInfo(account);
       if (keyInfo == null) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
-        initiateUpdateCredentials();
+        initiateUpdateCredentials(account);
         return null; // The response has the data.
       }
 
@@ -176,9 +190,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         try {
 
           final ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          final URI responseUrl = readChallenge(authBaseUrl, keyInfo, challenge);
+          final URI responseUrl = readChallenge(account, authBaseUrl, keyInfo, challenge);
           if (challenge == null) {
-            initiateUpdateCredentials();
+            initiateUpdateCredentials(account);
             return null; // The response has the data
           }
 
@@ -240,9 +254,110 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       return result;
     } catch (StaleCredentialsException e) {
       final Bundle result = new Bundle();
-      result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account));
+      result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl));
       return result;
     }
+  }
+
+  static String toString(final Bundle options) {
+    StringBuilder b = new StringBuilder();
+    b.append('[');
+    boolean first = true;
+    for(String key: options.keySet()) {
+      if (first) {
+        first = false;
+      } else {
+        b.append(", ");
+      }
+      b.append(key).append('=').append(options.get(key));
+    }
+    b.append(']');
+    return b.toString();
+  }
+
+  private Bundle requestAuthTokenPermission(final AccountAuthenticatorResponse response, final Account account, final Bundle options) {
+    Intent intent = new Intent(mContext, AuthTokenPermissionActivity.class);
+    intent.putExtra(KEY_ACCOUNT, account);
+    intent.putExtra(AccountManager.KEY_CALLER_UID, options.getInt(AccountManager.KEY_CALLER_UID));
+    intent.putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME));
+
+    Bundle b = new Bundle(1);
+    b.putParcelable(AccountManager.KEY_INTENT, intent);
+    response.onResult(b);
+    return b;
+  }
+
+  static boolean isAllowedUid(AccountManager am, Account account, int uid, final String callerPackage) {
+    String allowedUidsString = am.getUserData(account, KEY_ALLOWED_UIDS);
+    Log.d(TAG, "isAllowedUid() called with: " + "am = [" + am + "], account = [" + account + "], uid = [" + uid + "], callerPackage = [" + callerPackage + "], allowedUidString=["+allowedUidsString+"]");
+    if (allowedUidsString==null || allowedUidsString.isEmpty()) { return false; }
+    COMMA_SPLITTER.setString(allowedUidsString);
+    for(String s:COMMA_SPLITTER) {
+      int allowedUid = Integer.parseInt(s.trim());
+      if (allowedUid==uid) {
+        Log.d(TAG, "isAllowedUid() returned: true");
+        return true;
+      }
+    }
+    Log.d(TAG, "isAllowedUid() returned: false");
+    return false;
+  }
+
+  static void addAllowedUid(AccountManager am, Account account, int uid) {
+    String allowedUidsString = am.getUserData(account, KEY_ALLOWED_UIDS);
+    if (allowedUidsString==null || allowedUidsString.isEmpty()) {
+      allowedUidsString = Integer.toString(uid);
+    } else {
+      COMMA_SPLITTER.setString(allowedUidsString);
+      for (String s : COMMA_SPLITTER) {
+        int allowedUid = Integer.parseInt(s.trim());
+        if (allowedUid == uid) { return; } // already stored, bail out
+      }
+      allowedUidsString = allowedUidsString + "," + Integer.toString(uid);
+    }
+    am.setUserData(account, KEY_ALLOWED_UIDS, allowedUidsString);
+  }
+
+  static void removeAllowedUid(AccountManager am, Account account, int uid) {
+    String allowedUidsString = am.getUserData(account, KEY_ALLOWED_UIDS);
+    String uidString = Integer.toString(uid);
+    Log.d(TAG, "removeAllowedUid() called with: " + "am = [" + am + "], account = [" + account + "], uid = [" + uid + "], allowedUids=["+allowedUidsString+"], uidString=["+uidString+"]");
+    if (allowedUidsString==null || allowedUidsString.isEmpty()) {
+      return;
+    } else {
+      String newString = null;
+      for(int i=allowedUidsString.indexOf(uidString); i>=0;i=allowedUidsString.indexOf(uidString,i+1)) {
+        final int afterUid = i + uidString.length();
+        char before = i==0 ? ',' : allowedUidsString.charAt(i-1);
+        char after = afterUid >= allowedUidsString.length() ? ',' : allowedUidsString.charAt(afterUid);
+        if (before==',' && after==',') {
+          if (i>0) { newString = allowedUidsString.substring(0, i-1); } else { newString=""; }
+          if (afterUid+1<allowedUidsString.length()) { newString = newString.concat(allowedUidsString.substring(afterUid)); }
+        }
+        // do not break in case of duplication.
+      }
+      if (newString==null) { return; }
+      am.setUserData(account, KEY_ALLOWED_UIDS, newString);
+      Log.d(TAG, "removeAllowedUid("+uid+") stored: " + newString + " was:" +allowedUidsString);
+    }
+  }
+
+  private boolean isAuthTokenAllowed(final AccountAuthenticatorResponse response, final Account account, final Bundle options) {
+    Log.d(TAG, "isAuthTokenAllowed() called with: " + "response = [" + response + "], account = [" + account + "], options = " + options + ", myUid=["+Process.myUid()+"]");
+    if (! options.containsKey(AccountManager.KEY_CALLER_UID)) { return true; /* customTokens disabled */ }
+    int callerUid = options.getInt(AccountManager.KEY_CALLER_UID, -1);
+    String callerPackage = options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME);
+    if (Process.myUid()==callerUid) { return true; }
+    AccountManager am = AccountManager.get(mContext);
+    return isAllowedUid(am, account, callerUid, callerPackage);
+  }
+
+  private static int[] toInts(final String[] strings) {
+    int[] result = new int[strings.length];
+    for (int i = 0; i < strings.length; i++) {
+      result[i] = Integer.parseInt(strings[i]);
+    }
+    return result;
   }
 
   private static Bundle createResultBundle(final Account account, final byte[] cookie) {
@@ -250,12 +365,14 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     result.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
     result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
     result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
+    result.putLong(KEY_CUSTOM_TOKEN_EXPIRY, System.currentTimeMillis()+EXPIRY_TIMEOUT);
     return result;
   }
 
   private KeyInfo getKeyInfo(final Account account) {
     final AccountManager am = AccountManager.get(mContext);
     final String privateKeyString = am.getUserData(account, KEY_PRIVATEKEY);
+    if (privateKeyString==null) { return null; }
     final RSAPrivateKey privateKey = getPrivateKey(privateKeyString);
     final String keyidString = am.getUserData(account, KEY_KEYID);
     final long keyId = keyidString == null ? -1L : Long.parseLong(keyidString);
@@ -325,11 +442,11 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
   }
 
-  private static void initiateUpdateCredentials() throws StaleCredentialsException {
+  private static void initiateUpdateCredentials(final Account account) throws StaleCredentialsException {
     throw new StaleCredentialsException();
   }
 
-  private static URI readChallenge(final String authBaseUrl, final KeyInfo keyInfo, final ByteBuffer out) throws IOException, StaleCredentialsException {
+  private static URI readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo, final ByteBuffer out) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId);
     final HttpURLConnection connection = (HttpURLConnection) url.toURL().openConnection();
@@ -342,7 +459,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
       final int responseCode = connection.getResponseCode();
       if (responseCode == 403) {
-        initiateUpdateCredentials();
+        initiateUpdateCredentials(account);
       } else if (responseCode >= 400) {
         throw new HttpResponseException(connection);
       }
@@ -372,27 +489,27 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     if (!authTokenType.equals(ACCOUNT_TOKEN_TYPE)) {
       return null;
     }
-    return mContext.getString(R.string.authenticator_label);
+    return mContext.getString(R.string.authtoken_label);
   }
 
   @Override
   public Bundle updateCredentials(final AccountAuthenticatorResponse response, final Account account, final String authTokenType, final Bundle options) throws NetworkErrorException {
-    final Intent intent = getUpdateCredentialsBaseIntent(account);
-    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
     final AccountManager am = AccountManager.get(mContext);
+    final String authbase = am.getUserData(account, KEY_AUTH_BASE);
+    final Intent intent = getUpdateCredentialsBaseIntent(account, authbase);
+    intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
     final long keyid = Long.parseLong(am.getUserData(account, KEY_KEYID));
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid);
-    intent.putExtra(KEY_AUTH_BASE, am.getUserData(account, KEY_AUTH_BASE));
-    intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account);
     final Bundle bundle = new Bundle();
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
     return bundle;
   }
 
-  private Intent getUpdateCredentialsBaseIntent(final Account account) {
+  private Intent getUpdateCredentialsBaseIntent(final Account account, final String authBaseUrl) {
     final Intent intent = new Intent(mContext, DarwinAuthenticatorActivity.class);
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account);
     intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false);
+    intent.putExtra(DarwinAuthenticator.KEY_AUTH_BASE, authBaseUrl);
     return intent;
   }
 

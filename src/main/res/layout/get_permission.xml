@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (c) 2016.
+  ~
+  ~ This file is part of ProcessManager.
+  ~
+  ~ ProcessManager is free software: you can redistribute it and/or modify it under the terms of version 2.1 of the
+  ~ GNU Lesser General Public License as published by the Free Software Foundation.
+  ~
+  ~ ProcessManager is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+  ~ the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Lesser General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+  ~ see <http://www.gnu.org/licenses/>.
+  -->
+
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+    <!--suppress AndroidUnknownAttribute -->
+    <data>
+        <variable name="callerName"
+                  type="String"/>
+        <variable name="account"
+                  type="android.accounts.Account" />
+    </data>
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+        <android.support.v4.widget.Space
+                android:layout_width="fill_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+        <TextView
+                android:id="@+id/lblPermissionRequest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="14dp"
+                android:layout_marginRight="14dp"
+                android:layout_weight="0"
+                android:gravity="center_horizontal"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:text="@{@string/lbl_permissionRequest(callerName)}"
+                tools:text="@string/lbl_permissionRequest"
+                android:breakStrategy="balanced"
+                />
+
+        <TextView
+                android:id="@+id/lblAccountName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginLeft="48dp"
+                android:layout_marginRight="48dp"
+                android:layout_weight="0"
+                android:textColor="?android:attr/textColorHighlight"
+                android:gravity="center_horizontal"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:text="@{account.name}"
+                tools:text="pdvrieze@darwin"
+                />
+
+        <android.support.v4.widget.Space
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="?android:attr/buttonBarStyle"
+                >
+
+            <Button
+                    android:id="@+id/cancelbutton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginRight="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="@string/btn_no"
+                    style="?android:attr/buttonBarNegativeButtonStyle"
+                    />
+
+            <Button
+                    android:id="@+id/okbutton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_yes"
+                    style="?android:attr/buttonBarPositiveButtonStyle"
+                    />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</layout>
