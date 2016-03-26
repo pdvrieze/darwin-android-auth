@@ -505,6 +505,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           out.write(URLEncoder.encode(username, Util.UTF8.name()));
           out.write("&password=");
           out.write(URLEncoder.encode(password, Util.UTF8.name()));
+          out.write("&app=");
+          out.write(URLEncoder.encode(getAppName(), Util.UTF8.name()));
           if (encodedPublicKey != null) {
             out.write("&pubkey=");
             out.write(encodedPublicKey);
@@ -547,6 +549,11 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
       Log.d(TAG, "Failure registering keys", e);
       return AuthResult.UNKNOWNFAILURE;
     }
+  }
+
+  private String getAppName() {
+    if(Build.MODEL.contains(Build.MANUFACTURER)) { return "DarwinAuthenticator on "+Build.MODEL; }
+    return "DarwinAuthenticator on "+Build.MANUFACTURER+" "+Build.MODEL;
   }
 
   private static void logStream(final InputStream errorStream) throws IOException {
