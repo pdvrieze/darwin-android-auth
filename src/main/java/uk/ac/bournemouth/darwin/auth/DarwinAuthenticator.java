@@ -20,7 +20,6 @@ import android.accounts.*;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Debug;
 import android.os.Process;
 import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Base64;
@@ -45,7 +44,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
-import java.util.Date;
 
 
 /**
@@ -385,7 +383,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     try {
       keyfactory = KeyFactory.getInstance(KEY_ALGORITHM);
     } catch (NoSuchAlgorithmException e) {
-      Log.e(TAG, "The DSA algorithm isn't supported on your system", e);
+      Log.e(TAG, "The RSA algorithm isn't supported on your system", e);
       return null;
     }
     final KeySpec keyspec;
