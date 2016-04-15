@@ -64,7 +64,6 @@ android {
         debug {
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
-            useJack false
         }
         release {
 //            signingConfig signingConfigs.releaseConfig
