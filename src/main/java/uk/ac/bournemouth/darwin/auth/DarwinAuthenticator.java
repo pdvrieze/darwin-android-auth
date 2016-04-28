@@ -101,6 +101,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final int BASE64_FLAGS = Base64.URL_SAFE | Base64.NO_WRAP;
   private static final int ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS;
   private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
+  private static final int ERROR_INVALID_TOKEN = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
   private static final String ERRORMSG_UNSUPPORTED_OPERATION = "Editing properties is not supported";
   private static final int ERROR_UNSUPPORTED_OPERATION = AccountManager.ERROR_CODE_UNSUPPORTED_OPERATION;
   private static final String KEY_ALLOWED_UIDS = "allowedUids";
@@ -213,6 +214,14 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 final byte[] cookie = new byte[buffer.position()];
                 buffer.rewind();
                 buffer.get(cookie);
+                for(byte b:cookie) {
+                  if (! ((b>='A' && b<='Z') || (b>='a' && b<='z') ||
+                         (b>='0' && b<='9') || b=='+'  || b=='/'  ||
+                          b=='=' || b==' '  || b=='-'  || b=='_'  || b==':')) {
+                    response.onError(ERROR_INVALID_TOKEN, "The token contains illegal characters");
+                    return null;
+                  }
+                }
 
                 return createResultBundle(account, cookie);
 
