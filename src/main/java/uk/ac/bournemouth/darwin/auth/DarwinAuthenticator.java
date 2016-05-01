@@ -24,10 +24,13 @@ import android.os.Process;
 import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
 
 import javax.crypto.Cipher;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -35,7 +38,6 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -44,6 +46,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Arrays;
 
 
 /**
@@ -91,8 +95,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String KEY_ACCOUNT = "account";
   private static final String KEY_PUBLICKEY = "publickey";
 
-  static final String KEY_ALGORITHM = "RSA";
-  private static final int AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
+  static final String CIPHERSUITE                  = "RSA/ECB/PKCS1Padding";
+  static final String KEY_ALGORITHM                = "RSA";
+  private static final int    AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
 
   private static final String TAG = "DarwinAuthenticator";
   private static final int CHALLENGE_MAX = 4096;
@@ -177,7 +182,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
     try {
       final KeyInfo keyInfo = getKeyInfo(account);
-      if (keyInfo == null) {
+      if (keyInfo == null || keyInfo.keyId<0) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
         initiateUpdateCredentials(account);
         return null; // The response has the data.
@@ -188,14 +193,24 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         // Get challenge
         try {
 
-          final ByteBuffer challenge = ByteBuffer.allocate(CHALLENGE_MAX);
-          final URI responseUrl = readChallenge(account, authBaseUrl, keyInfo, challenge);
+          final Pair<URI, byte[]> challengePair = readChallenge(account, authBaseUrl, keyInfo);
+          URI                     responseUrl   = challengePair.first;
+          byte[]                  challenge     = challengePair.second;
+
           if (challenge == null) {
             initiateUpdateCredentials(account);
             return null; // The response has the data
           }
 
-          final ByteBuffer responseBuffer = base64encode(sign(challenge, keyInfo.privateKey));
+          final byte[] responseBuffer = base64encode(sign(challenge, keyInfo.privateKey));
+/*
+          if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Challenge: "+new String(challenge));
+            Log.d(TAG, "Response: "+new String(responseBuffer));
+            Log.d(TAG, "Private key exp: "+Base64.encodeToString(keyInfo.privateKey.getPrivateExponent().toByteArray(),0)+
+                       " modulus: "+Base64.encodeToString(keyInfo.privateKey.getModulus().toByteArray(), 0));
+          }
+*/
 
           final HttpURLConnection conn = (HttpURLConnection) responseUrl.toURL().openConnection();
 
@@ -412,48 +427,56 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static ByteBuffer sign(final ByteBuffer challenge, final RSAPrivateKey privateKey) {
+  private static byte[] sign(final byte[] challenge, final RSAPrivateKey privateKey) {
     final Cipher cipher;
     try {
-      cipher = Cipher.getInstance("RSA");
+      cipher = Cipher.getInstance(CIPHERSUITE);
       cipher.init(Cipher.ENCRYPT_MODE, privateKey);
 
-      final ByteBuffer output = ByteBuffer.allocate(cipher.getOutputSize(challenge.limit()));
-
-      cipher.doFinal(challenge, output);
-
       // Prepare the output buffer for reading.
-      output.limit(output.position());
-      output.rewind();
-      return output;
+      byte[] response = cipher.doFinal(challenge);
+/*
+      if (BuildConfig.DEBUG) {
+        KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
+        RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(new RSAPublicKeySpec(privateKey.getModulus(), BigInteger.valueOf(65537)));
+        cipher.init(Cipher.DECRYPT_MODE, publicKey);
+        byte[] challengeCopy = cipher.doFinal(response);
+        Log.e(TAG, "Validated response: "+new String(Base64.encodeToString(response,0)));
+        Log.e(TAG, "Copy of challenge: "+new String(challengeCopy));
+        if (!Arrays.equals(challenge, challengeCopy)) {
+          throw new IllegalStateException("The challenge and its copy are different");
+        }
+      }
+*/
+      return response;
     } catch (GeneralSecurityException e) {
       Log.w(TAG, e);
       return null;
     }
   }
 
-  private static void writeResponse(final HttpURLConnection conn, final ByteBuffer response) throws IOException {
+  private static void writeResponse(final HttpURLConnection conn, final byte[] response) throws IOException {
     conn.setDoOutput(true);
     conn.setRequestMethod("POST");
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
-    final WritableByteChannel out = Channels.newChannel(conn.getOutputStream());
+    final OutputStream out = conn.getOutputStream();
     try {
-      out.write(ByteBuffer.wrap(new byte[]{'r', 'e', 's', 'p', 'o', 'n', 's', 'e', '='}));
+      out.write("response=".getBytes());
       out.write(response);
     } finally {
       out.close();
     }
   }
 
-  private static ByteBuffer base64encode(final ByteBuffer in) {
-    return ByteBuffer.wrap(Base64.encode(in.array(), in.arrayOffset(), in.remaining(), BASE64_FLAGS));
+  private static byte[] base64encode(final byte[] in) {
+    return Base64.encode(in, BASE64_FLAGS);
   }
 
   private static void initiateUpdateCredentials(final Account account) throws StaleCredentialsException {
     throw new StaleCredentialsException();
   }
 
-  private static URI readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo, final ByteBuffer out) throws IOException, StaleCredentialsException {
+  private static Pair<URI, byte[]> readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId);
     final HttpURLConnection connection = (HttpURLConnection) url.toURL().openConnection();
@@ -465,24 +488,27 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       }
 
       final int responseCode = connection.getResponseCode();
-      if (responseCode == 403) {
+      if (responseCode == HttpURLConnection.HTTP_FORBIDDEN || responseCode==HttpURLConnection.HTTP_NOT_FOUND) {
         initiateUpdateCredentials(account);
       } else if (responseCode >= 400) {
         throw new HttpResponseException(connection);
       }
 
-      final ReadableByteChannel in = Channels.newChannel(connection.getInputStream());
+      byte[] inBuffer = new byte[(CHALLENGE_MAX*4)/3];
+
+      final InputStream in = connection.getInputStream();
+      final int readCount;
       try {
-        in.read(out);
+        readCount = in.read(inBuffer);
       } finally {
         in.close();
       }
-      out.limit(out.position());
-      out.rewind();
+      byte[] decodedChallenge = Base64.decode(inBuffer, 0, readCount, Base64.DEFAULT);
+
+      return Pair.create(responseUrl, decodedChallenge);
     } finally {
       connection.disconnect();
     }
-    return responseUrl;
   }
 
   @SuppressWarnings("StringConcatenationMissingWhitespace")

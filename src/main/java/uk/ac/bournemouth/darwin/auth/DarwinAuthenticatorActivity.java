@@ -33,6 +33,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -250,6 +251,10 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     if (mAuthBaseUrl == null) { mAuthBaseUrl = DarwinAuthenticator.DEFAULT_AUTH_BASE_URL; }
     mAccountManager = AccountManager.get(this);
 
+    if (mAccount!=null) {
+      mKeyId = Long.parseLong(mAccountManager.getUserData(mAccount, PARAM_KEYID));
+    }
+
     if (Build.VERSION.SDK_INT < 11) { // No actionbar
       requestWindowFeature(Window.FEATURE_LEFT_ICON);
     }
@@ -316,7 +321,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         try {
           generator = KeyPairGenerator.getInstance(DarwinAuthenticator.KEY_ALGORITHM);
         } catch (NoSuchAlgorithmException e) {
-          Log.e(TAG, "The RSA algorithm isn't supported on your system", e);
+          Log.e(TAG, "The "+DarwinAuthenticator.KEY_ALGORITHM+" algorithm isn't supported on your system", e);
           return null;
         }
         generator.initialize(KEY_SIZE);
@@ -493,6 +498,9 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   /** Try to authenticate by registering the public key to the server. */
   private AuthResult registerPublicKey(final String authBaseUrl, final String username, final String password, final RSAPublicKey publicKey) {
     final String encodedPublicKey = publicKey == null ? null : DarwinAuthenticator.encodePublicKey(publicKey);
+    Log.d(TAG, "registering encoded public key at id ("+mKeyId+"):"+encodedPublicKey);
+    Log.d(TAG, "public exp:"+Base64.encodeToString(publicKey.getPublicExponent().toByteArray(), 0));
+    Log.d(TAG, "public mod:"+Base64.encodeToString(publicKey.getModulus().toByteArray(), 0));
     final HttpURLConnection conn;
     try {
       conn = (HttpURLConnection) DarwinAuthenticator.getAuthenticateUrl(authBaseUrl).toURL().openConnection();
@@ -534,7 +542,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
           } finally {
             in.close();
           }
-          return AuthResult.SUCCESS;
+          if (mKeyId>=0) return AuthResult.SUCCESS;
         } else {
           logStream(conn.getErrorStream());
         }
