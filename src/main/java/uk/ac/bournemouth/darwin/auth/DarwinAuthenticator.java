@@ -46,6 +46,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
+import java.util.Arrays;
 
 
 /**
@@ -504,7 +505,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       }
       byte[] decodedChallenge = Base64.decode(inBuffer, 0, readCount, Base64.DEFAULT);
 
-      return Pair.create(responseUrl, decodedChallenge);
+      return Pair.create(responseUrl, Arrays.copyOf(inBuffer, readCount));
     } finally {
       connection.disconnect();
     }
