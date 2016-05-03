@@ -46,8 +46,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.RSAPrivateKeySpec;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.Arrays;
 
 
 /**
@@ -95,7 +93,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String KEY_ACCOUNT = "account";
   private static final String KEY_PUBLICKEY = "publickey";
 
-  static final String CIPHERSUITE                  = "RSA/ECB/PKCS1Padding";
+//  static final String CIPHERSUITE                  = "RSA/ECB/PKCS1Padding";
+  static final String CIPHERSUITE                  = "RSA/NONE/NOPADDING";
   static final String KEY_ALGORITHM                = "RSA";
   private static final int    AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
 
@@ -202,7 +201,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
             return null; // The response has the data
           }
 
-          final byte[] responseBuffer = base64encode(sign(challenge, keyInfo.privateKey));
+          final byte[] responseBuffer = base64encode(encrypt(challenge, keyInfo.privateKey));
 /*
           if (BuildConfig.DEBUG) {
             Log.d(TAG, "Challenge: "+new String(challenge));
@@ -427,7 +426,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static byte[] sign(final byte[] challenge, final RSAPrivateKey privateKey) {
+  private static byte[] encrypt(final byte[] challenge, final RSAPrivateKey privateKey) {
     final Cipher cipher;
     try {
       cipher = Cipher.getInstance(CIPHERSUITE);

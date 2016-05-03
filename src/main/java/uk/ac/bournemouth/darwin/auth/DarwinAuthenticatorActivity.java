@@ -508,19 +508,24 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
-        try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Util.UTF8))) {
-          out.write("username=");
-          out.write(URLEncoder.encode(username, Util.UTF8.name()));
-          out.write("&password=");
-          out.write(URLEncoder.encode(password, Util.UTF8.name()));
-          out.write("&app=");
-          out.write(URLEncoder.encode(getAppName(), Util.UTF8.name()));
-          if (encodedPublicKey != null) {
-            out.write("&pubkey=");
-            out.write(encodedPublicKey);
-          }
-          if (mKeyId >= 0) {
-            out.write("&id=" + mKeyId);
+        {
+          BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Util.UTF8));
+          try {
+            out.write("username=");
+            out.write(URLEncoder.encode(username, Util.UTF8.name()));
+            out.write("&password=");
+            out.write(URLEncoder.encode(password, Util.UTF8.name()));
+            out.write("&app=");
+            out.write(URLEncoder.encode(getAppName(), Util.UTF8.name()));
+            if (encodedPublicKey != null) {
+              out.write("&pubkey=");
+              out.write(encodedPublicKey);
+            }
+            if (mKeyId >= 0) {
+              out.write("&id=" + mKeyId);
+            }
+          } finally {
+            out.close();
           }
         }
 
