@@ -24,7 +24,6 @@ import android.os.Process;
 import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 
 import javax.crypto.Cipher;
 
@@ -54,6 +53,17 @@ import java.util.Arrays;
  */
 public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
+  private static class ChallengeInfo {
+    public final URI    responseUri;
+    public final byte[] data;
+    public final int    version;
+
+    public ChallengeInfo(final URI responseUri, final byte[] data, final int version) {
+      this.responseUri = responseUri;
+      this.data = data;
+      this.version = version;
+    }
+  }
 
   private static class StaleCredentialsException extends Exception {
 
@@ -94,8 +104,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   static final String KEY_ACCOUNT = "account";
   private static final String KEY_PUBLICKEY = "publickey";
 
-//  static final String CIPHERSUITE                  = "RSA/ECB/PKCS1Padding";
-  static final String CIPHERSUITE                  = "RSA/NONE/NOPADDING";
+  static final String CIPHERSUITE_V2                  = "RSA/ECB/PKCS1Padding";
+  static final String CIPHERSUITE_V1                  = "RSA/NONE/NOPADDING";
+
+  static final String CHALLENGE_VERSION_V2 = "2";
+  static final String HEADER_CHALLENGE_VERSION = "X-Challenge-version";
+
   static final String KEY_ALGORITHM                = "RSA";
   private static final int    AUTHTOKEN_RETRIEVE_TRY_COUNT = 5;
 
@@ -193,16 +207,14 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
         // Get challenge
         try {
 
-          final Pair<URI, byte[]> challengePair = readChallenge(account, authBaseUrl, keyInfo);
-          URI                     responseUrl   = challengePair.first;
-          byte[]                  challenge     = challengePair.second;
+          final ChallengeInfo challenge = readChallenge(account, authBaseUrl, keyInfo);
 
-          if (challenge == null) {
+          if (challenge.data == null) {
             initiateUpdateCredentials(account);
             return null; // The response has the data
           }
 
-          final byte[] responseBuffer = base64encode(encrypt(challenge, keyInfo.privateKey));
+          final byte[] responseBuffer = base64encode(encrypt(challenge.data, keyInfo.privateKey, challenge.version));
 /*
           if (BuildConfig.DEBUG) {
             Log.d(TAG, "Challenge: "+new String(challenge));
@@ -212,7 +224,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
           }
 */
 
-          final HttpURLConnection conn = (HttpURLConnection) responseUrl.toURL().openConnection();
+          final HttpURLConnection conn = (HttpURLConnection) challenge.responseUri.toURL().openConnection();
 
           try {
             writeResponse(conn, responseBuffer);
@@ -229,7 +241,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 final byte[] cookie = new byte[buffer.position()];
                 buffer.rewind();
                 buffer.get(cookie);
-                for(byte b:cookie) {
+                for(final byte b:cookie) {
                   if (! ((b>='A' && b<='Z') || (b>='a' && b<='z') ||
                          (b>='0' && b<='9') || b=='+'  || b=='/'  ||
                           b=='=' || b==' '  || b=='-'  || b=='_'  || b==':')) {
@@ -427,10 +439,10 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
   }
 
-  private static byte[] encrypt(final byte[] challenge, final RSAPrivateKey privateKey) {
+  private static byte[] encrypt(final byte[] challenge, final RSAPrivateKey privateKey, int version) {
     final Cipher cipher;
     try {
-      cipher = Cipher.getInstance(CIPHERSUITE);
+      cipher = Cipher.getInstance(version==1 ? CIPHERSUITE_V1 : CIPHERSUITE_V2);
       cipher.init(Cipher.ENCRYPT_MODE, privateKey);
 
       // Prepare the output buffer for reading.
@@ -476,15 +488,22 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     throw new StaleCredentialsException();
   }
 
-  private static Pair<URI, byte[]> readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo) throws IOException, StaleCredentialsException {
+  private static ChallengeInfo readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId);
     final HttpURLConnection connection = (HttpURLConnection) url.toURL().openConnection();
     connection.setInstanceFollowRedirects(false);// We should get the response url.
+    int version = 1;
     try {
       {
         final String header = connection.getHeaderField(HEADER_RESPONSE);
         responseUrl = header == null ? url : URI.create(header);
+      }
+      {
+        final String header = connection.getHeaderField(HEADER_CHALLENGE_VERSION);
+        if (header!=null) {
+          version = CHALLENGE_VERSION_V2.equals(header)? 2 : -1;
+        }
       }
 
       final int responseCode = connection.getResponseCode();
@@ -503,9 +522,15 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       } finally {
         in.close();
       }
-      byte[] decodedChallenge = Base64.decode(inBuffer, 0, readCount, Base64.DEFAULT);
-
-      return Pair.create(responseUrl, Arrays.copyOf(inBuffer, readCount));
+      byte[] challengeBytes;
+      {
+        if (version!=1) {
+          challengeBytes = Base64.decode(inBuffer, 0, readCount, Base64.DEFAULT);
+        } else {
+          challengeBytes = Arrays.copyOf(inBuffer, readCount);
+        }
+      }
+      return new ChallengeInfo(responseUrl, challengeBytes, version);
     } finally {
       connection.disconnect();
     }
