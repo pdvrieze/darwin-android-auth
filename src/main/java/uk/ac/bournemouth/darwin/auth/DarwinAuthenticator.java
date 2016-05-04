@@ -202,8 +202,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       final KeyInfo keyInfo = getKeyInfo(account);
       if (keyInfo == null || keyInfo.keyId<0) {
         // We are in an invalid state. We no longer have a private key. Redo authentication.
-        initiateUpdateCredentials(account);
-        return null; // The response has the data.
+        return initiateUpdateCredentials(account, authBaseUrl);
       }
 
       int tries = 0;
@@ -213,9 +212,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
           final ChallengeInfo challenge = readChallenge(account, authBaseUrl, keyInfo);
 
-          if (challenge.data == null) {
-            initiateUpdateCredentials(account);
-            return null; // The response has the data
+          if (challenge == null || challenge.data == null) {
+            return initiateUpdateCredentials(account, authBaseUrl);
           }
 
           final byte[] responseBuffer = base64encode(encrypt(challenge.data, keyInfo.privateKey, challenge.version));
@@ -295,6 +293,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl));
       return result;
     }
+  }
+
+  private Bundle initiateUpdateCredentials(final Account account, final String authBaseUrl) {
+    final Bundle result = new Bundle();
+    result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl));
+    return result;
   }
 
   private boolean hasAccount(final AccountManager am, final Account account) {
@@ -497,10 +501,6 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return Base64.encode(in, BASE64_FLAGS);
   }
 
-  private static void initiateUpdateCredentials(final Account account) throws StaleCredentialsException {
-    throw new StaleCredentialsException();
-  }
-
   private static ChallengeInfo readChallenge(final Account account, final String authBaseUrl, final KeyInfo keyInfo) throws IOException, StaleCredentialsException {
     URI responseUrl;
     final URI url = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId);
@@ -521,7 +521,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
       final int responseCode = connection.getResponseCode();
       if (responseCode == HttpURLConnection.HTTP_FORBIDDEN || responseCode==HttpURLConnection.HTTP_NOT_FOUND) {
-        initiateUpdateCredentials(account);
+        return null;
       } else if (responseCode >= 400) {
         throw new HttpResponseException(connection);
       }
