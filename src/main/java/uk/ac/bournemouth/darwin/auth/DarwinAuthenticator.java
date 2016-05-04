@@ -186,11 +186,15 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       response.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType");
       return null; // the response has the error
     }
+    final AccountManager am = AccountManager.get(mContext);
+    if(! hasAccount(am, account)) {
+      throw new IllegalArgumentException("The provided account does not exist");
+    }
+
     if (! isAuthTokenAllowed(response, account, options)) {
       return requestAuthTokenPermission(response, account, options);
     }
 
-    final AccountManager am = AccountManager.get(mContext);
     String authBaseUrl = am.getUserData(account, KEY_AUTH_BASE);
     if (authBaseUrl == null) { authBaseUrl = DEFAULT_AUTH_BASE_URL; }
 
@@ -291,6 +295,15 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl));
       return result;
     }
+  }
+
+  private boolean hasAccount(final AccountManager am, final Account account) {
+    for(Account candidate: am.getAccountsByType(account.type)) {
+      if (candidate.name.equals(account.name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static String toString(final Bundle options) {
