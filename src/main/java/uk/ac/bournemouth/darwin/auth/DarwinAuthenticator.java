@@ -273,17 +273,16 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                 result.putString(AccountManager.KEY_ERROR_MESSAGE, e.getMessage());
                 return result;
               }
+              throw e;
             }
           } finally {
             conn.disconnect();
           }
 
-        } catch (MalformedURLException e) {
-          e.printStackTrace(); // Should never happen, it's a constant
         } catch (IOException e) {
           throw new NetworkErrorException(e);
         }
-        ++tries;
+//        ++tries;
       }
       final Bundle result = new Bundle();
       result.putString(AccountManager.KEY_ERROR_MESSAGE, "Could not get authentication key");
