@@ -585,7 +585,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
 
   @Override
   public Bundle hasFeatures(final AccountAuthenticatorResponse response, final Account account, final String[] features) throws NetworkErrorException {
-    Log.i(TAG, "hasFeatures() called with: " + "response = [" + response + "], account = [" + account + "], features = [" + features + "]");
+    Log.i(TAG, "hasFeatures() called with: " + "response = [" + response + "], account = [" + account + "], features = [" + Arrays.toString(features) + "]");
     final boolean hasFeature;
     if (features.length == 1) {
       final AccountManager am = AccountManager.get(mContext);

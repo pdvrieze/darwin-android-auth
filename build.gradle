@@ -26,9 +26,9 @@ dependencies {
 }
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '23.1.1' }
-    if (! has('androidPluginVersion') ) { androidPluginVersion = '1.5.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '23.0.2' }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '23.4.0' }
+    if (! has('androidPluginVersion') ) { androidPluginVersion = '2.1.0' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '23.0.3' }
 }
 
 android {
@@ -36,7 +36,7 @@ android {
     buildToolsVersion "${androidBuildToolsVersion}"
 
     defaultConfig {
-        minSdkVersion 9
+        minSdkVersion 11
         targetSdkVersion 23
         versionCode 1002001
         versionName version
