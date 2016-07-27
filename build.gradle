@@ -15,8 +15,8 @@
  */
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.0.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '23.0.3' }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.1.0' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.0' }
 }
 
 buildscript {
@@ -43,12 +43,12 @@ dependencies {
 }
 
 android {
-    compileSdkVersion 23
+    compileSdkVersion 24
     buildToolsVersion "${androidBuildToolsVersion}"
 
     defaultConfig {
         minSdkVersion 11
-        targetSdkVersion 23
+        targetSdkVersion 24
         versionCode 1002002
         versionName version
     }
