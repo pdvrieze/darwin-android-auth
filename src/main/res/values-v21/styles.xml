@@ -20,8 +20,8 @@
 
     </style>
     <style name="AppTheme" parent="AppTheme.Base">
-        <item name="buttonBarNegativeButtonStyle">?android:attr/buttonBarButtonStyle</item>
-        <item name="buttonBarPositiveButtonStyle">?android:attr/buttonBarButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">?android:attr/buttonBarNegativeButtonStyle</item>
+        <item name="buttonBarPositiveButtonStyle">?android:attr/buttonBarPositiveButtonStyle</item>
     </style>
 
 </resources>

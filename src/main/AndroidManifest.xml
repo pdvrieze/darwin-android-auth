@@ -30,7 +30,7 @@
             android:allowBackup="false"
             android:fullBackupContent="false"
             android:supportsRtl="true"
-            tools:ignore="UnusedAttribute">
+            tools:ignore="GoogleAppIndexingWarning,UnusedAttribute">
         <service
             android:name="DarwinAuthenticatorService" android:permission="android.permission.ACCOUNT_MANAGER">
             <intent-filter>

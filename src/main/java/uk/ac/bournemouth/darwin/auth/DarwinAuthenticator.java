@@ -19,6 +19,7 @@ package uk.ac.bournemouth.darwin.auth;
 import android.accounts.*;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Process;
 import android.text.TextUtils.SimpleStringSplitter;
@@ -119,8 +120,8 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   private static final int MAX_TOKEN_SIZE = 1024;
   private static final int BASE64_FLAGS = Base64.URL_SAFE | Base64.NO_WRAP;
   private static final int ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS;
-  private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
-  private static final int ERROR_INVALID_TOKEN = AccountManager.ERROR_CODE_BAD_AUTHENTICATION;
+  private static final int ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_REMOTE_EXCEPTION;
+  private static final int ERROR_INVALID_TOKEN = AccountManager.ERROR_CODE_REMOTE_EXCEPTION;
   private static final String ERRORMSG_UNSUPPORTED_OPERATION = "Editing properties is not supported";
   private static final int ERROR_UNSUPPORTED_OPERATION = AccountManager.ERROR_CODE_UNSUPPORTED_OPERATION;
   private static final String KEY_ALLOWED_UIDS = "allowedUids";
@@ -329,7 +330,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     Intent intent = new Intent(mContext, AuthTokenPermissionActivity.class);
     intent.putExtra(KEY_ACCOUNT, account);
     intent.putExtra(AccountManager.KEY_CALLER_UID, options.getInt(AccountManager.KEY_CALLER_UID));
-    intent.putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME));
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+      intent.putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME));
+    }
 
     Bundle b = new Bundle(1);
     b.putParcelable(AccountManager.KEY_INTENT, intent);
@@ -396,7 +399,12 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     Log.d(TAG, "isAuthTokenAllowed() called with: " + "response = [" + response + "], account = [" + account + "], options = " + options + ", myUid=["+Process.myUid()+"]");
     if (! options.containsKey(AccountManager.KEY_CALLER_UID)) { return true; /* customTokens disabled */ }
     int callerUid = options.getInt(AccountManager.KEY_CALLER_UID, -1);
-    String callerPackage = options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME);
+    final String callerPackage;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+      callerPackage = options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME);
+    } else {
+      callerPackage = null;
+    }
     if (Process.myUid()==callerUid) { return true; }
     AccountManager am = AccountManager.get(mContext);
     return isAllowedUid(am, account, callerUid, callerPackage);
@@ -415,7 +423,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     result.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
     result.putString(AccountManager.KEY_ACCOUNT_TYPE, ACCOUNT_TOKEN_TYPE);
     result.putString(AccountManager.KEY_AUTHTOKEN, new String(cookie, Util.UTF8));
-    result.putLong(KEY_CUSTOM_TOKEN_EXPIRY, System.currentTimeMillis()+EXPIRY_TIMEOUT);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      result.putLong(KEY_CUSTOM_TOKEN_EXPIRY, System.currentTimeMillis()+EXPIRY_TIMEOUT);
+    }
     return result;
   }
 

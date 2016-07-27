@@ -36,25 +36,27 @@ public class UninstallReceiver extends BroadcastReceiver {
   @Override
   public void onReceive(final Context context, final Intent intent) {
     Log.d(TAG, "onReceive() called with: " + "context = [" + context + "], intent = [" + intent + "]");
-    if (BuildConfig.DEBUG) {
-      (new AsyncTask<PendingResult, Void, PendingResult>() {
-        @Override
-        protected PendingResult doInBackground(final PendingResult[] params) {
-          Debug.waitForDebugger();
-          doRemovePackagePermissions(intent, context);
+    final String action = intent.getAction();
+    if (Intent.ACTION_UNINSTALL_PACKAGE.equals(action)) {
+      if (BuildConfig.DEBUG) {
+        (new AsyncTask<PendingResult, Void, PendingResult>() {
+          @Override
+          protected PendingResult doInBackground(final PendingResult[] params) {
+            Debug.waitForDebugger();
+            doRemovePackagePermissions(intent, context);
 
-          return params[0];
-        }
+            return params[0];
+          }
 
-        @Override
-        protected void onPostExecute(final PendingResult pendingResult) {
-          pendingResult.finish();
-        }
-      }).execute(goAsync());
-    } else {
-      doRemovePackagePermissions(intent, context);
+          @Override
+          protected void onPostExecute(final PendingResult pendingResult) {
+            pendingResult.finish();
+          }
+        }).execute(goAsync());
+      } else {
+        doRemovePackagePermissions(intent, context);
+      }
     }
-            ;
   }
 
   private void doRemovePackagePermissions(final Intent intent, final Context context) {
