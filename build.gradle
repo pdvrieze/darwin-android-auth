@@ -14,6 +14,23 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+ext {
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.0.0' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '23.0.3' }
+}
+
+buildscript {
+    ext {
+        if (! has('androidPluginVersion') ) { androidPluginVersion = '2.1.2' }
+    }
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:${androidPluginVersion}"
+    }
+}
+
 apply plugin: 'com.android.application'
 
 version = '1.2.2'
@@ -23,12 +40,6 @@ dependencies {
     compile "com.android.support:support-annotations:${androidCompatVersion}"
     compile "com.android.support:support-v4:${androidCompatVersion}"
 //    testCompile 'junit:junit:4.12'
-}
-
-ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '23.4.0' }
-    if (! has('androidPluginVersion') ) { androidPluginVersion = '2.1.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '23.0.3' }
 }
 
 android {

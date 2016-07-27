@@ -4,3 +4,5 @@
 /local.properties
 /*.apk
 /*.iml
+/.idea/libraries
+/.idea/misc
