@@ -15,13 +15,13 @@
  */
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.1.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.0' }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.2.0' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.1' }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { androidPluginVersion = '2.1.2' }
+        if (! has('androidPluginVersion') ) { androidPluginVersion = '2.2.0' }
     }
     repositories {
         jcenter()
