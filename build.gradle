@@ -16,7 +16,7 @@
 
 ext {
     if (! has('androidCompatVersion') ) { androidCompatVersion = '24.2.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.1' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.2' }
 }
 
 buildscript {
@@ -33,13 +33,14 @@ buildscript {
 
 apply plugin: 'com.android.application'
 
-version = '1.2.2'
+version = '1.2.3'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
     compile "com.android.support:support-annotations:${androidCompatVersion}"
     compile "com.android.support:support-v4:${androidCompatVersion}"
 //    testCompile 'junit:junit:4.12'
+//    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
 }
 
 android {
@@ -49,7 +50,7 @@ android {
     defaultConfig {
         minSdkVersion 11
         targetSdkVersion 24
-        versionCode 1002002
+        versionCode 1002003
         versionName version
     }
 
