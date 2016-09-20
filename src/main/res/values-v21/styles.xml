@@ -16,7 +16,7 @@
 
 <resources>
 
-    <style name="AppTheme.Base" parent="android:Theme.Light">
+    <style name="AppTheme.Base" parent="android:Theme.Material.Light.DarkActionBar">
 
     </style>
     <style name="AppTheme" parent="AppTheme.Base">
