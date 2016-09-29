@@ -40,7 +40,7 @@ dependencies {
     compile "com.android.support:support-annotations:${androidCompatVersion}"
     compile "com.android.support:support-v4:${androidCompatVersion}"
 //    testCompile 'junit:junit:4.12'
-//    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha9'
 }
 
 android {
