@@ -593,15 +593,20 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
    */
   private void storeCredentials(@NonNull final Account account, final long keyId, @NonNull final KeyPair keyPair, @NonNull final String authbase) {
     final String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) keyPair.getPrivate());
-    if (!mLockedUsername) {
+
+    boolean updateUser=mLockedUsername;
+    if (!updateUser) {
       final Bundle bundle = new Bundle(3);
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
       bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, authbase);
-      mAccountManager.addAccountExplicitly(account, null, bundle);
-    } else {
+      updateUser = !mAccountManager.addAccountExplicitly(account, null, bundle);
+    }
+
+    if(updateUser){
       mAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       mAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
+      mAccountManager.setUserData(account, DarwinAuthenticator.KEY_AUTH_BASE, authbase);
     }
   }
 

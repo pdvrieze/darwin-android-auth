@@ -99,7 +99,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   /** The argument name used to specify the base url for authentication. */
   public static final String KEY_AUTH_BASE = "authbase";
 
-  static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accounts/";
+  static final String DEFAULT_AUTH_BASE_URL = "https://darwin.bournemouth.ac.uk/accountmgr/";
   static final String KEY_PRIVATEKEY = "privatekey";
   static final String KEY_KEYID = "keyid";
   static final String KEY_ACCOUNT = "account";
@@ -188,9 +188,9 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
       return null; // the response has the error
     }
     final AccountManager am = AccountManager.get(mContext);
-    if(! hasAccount(am, account)) {
-      throw new IllegalArgumentException("The provided account does not exist");
-    }
+//    if(! hasAccount(am, account)) {
+//      throw new IllegalArgumentException("The provided account does not exist");
+//    }
 
     if (! isAuthTokenAllowed(response, account, options)) {
       return requestAuthTokenPermission(response, account, options);
@@ -248,7 +248,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
                   if (! ((b>='A' && b<='Z') || (b>='a' && b<='z') ||
                          (b>='0' && b<='9') || b=='+'  || b=='/'  ||
                           b=='=' || b==' '  || b=='-'  || b=='_'  || b==':')) {
-                    response.onError(ERROR_INVALID_TOKEN, "The token contains illegal characters");
+                    response.onError(ERROR_INVALID_TOKEN, "The token contains illegal characters ("+new String(cookie)+")");
                     return null;
                   }
                 }
@@ -301,6 +301,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return result;
   }
 
+/*
   private boolean hasAccount(final AccountManager am, final Account account) {
     for(Account candidate: am.getAccountsByType(account.type)) {
       if (candidate.name.equals(account.name)) {
@@ -309,6 +310,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     }
     return false;
   }
+*/
 
   static String toString(final Bundle options) {
     StringBuilder b = new StringBuilder();
