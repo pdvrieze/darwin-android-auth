@@ -14,14 +14,19 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.2.1' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.2' }
+    if (!rootProject.hasProperty('androidBuildToolsVersion')) {
+        androidBuildToolsVersion = '25.0.0'
+    }
+    if (!rootProject.hasProperty('androidCompatVersion')) {
+        androidCompatVersion = '24.2.1'
+    }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { androidPluginVersion = '2.2.0' }
+        if (! rootProject.hasProperty('androidPluginVersion') ) { androidPluginVersion = '2.2.2' }
     }
     repositories {
         jcenter()
