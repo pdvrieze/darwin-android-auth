@@ -86,7 +86,6 @@ android {
 //            signingConfig signingConfigs.releaseConfig
             minifyEnabled true
             shrinkResources true
-            useJack false
         }
     }
 }
