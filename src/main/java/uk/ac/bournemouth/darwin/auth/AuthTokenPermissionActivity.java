@@ -19,13 +19,11 @@ package uk.ac.bournemouth.darwin.auth;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
-import android.app.Service;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.databinding.DataBindingUtil;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -48,12 +46,12 @@ public class AuthTokenPermissionActivity extends Activity implements OnClickList
     mBinding = DataBindingUtil.setContentView(this, R.layout.get_permission);
     mBinding.setAccount(getIntent().<Account>getParcelableExtra(DarwinAuthenticator.KEY_ACCOUNT));
     mCallerUid = getIntent().getIntExtra(AccountManager.KEY_CALLER_UID, -1);
-    final PackageManager pm = getPackageManager();
-    String callerPackage = pm.getPackagesForUid(mCallerUid)[0];
-    String packageName;
+    final PackageManager pm            = getPackageManager();
+    final String         callerPackage = pm.getPackagesForUid(mCallerUid)[0];
+    String               packageName;
     try {
       final PackageInfo packageInfo = pm.getPackageInfo(callerPackage, 0);
-      int labelRes = packageInfo.applicationInfo.labelRes;
+      final int         labelRes    = packageInfo.applicationInfo.labelRes;
       packageName = pm.getResourcesForApplication(packageInfo.applicationInfo).getString(labelRes);
     } catch (NameNotFoundException e) {
       Log.w(TAG, "onCreate: ", e);
