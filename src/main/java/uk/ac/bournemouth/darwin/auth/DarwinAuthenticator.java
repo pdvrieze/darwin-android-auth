@@ -436,6 +436,11 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
     return result;
   }
 
+  @Override
+  public Bundle getAccountRemovalAllowed(final AccountAuthenticatorResponse response, final Account account) throws NetworkErrorException {
+    return super.getAccountRemovalAllowed(response, account);
+  }
+
   private KeyInfo getKeyInfo(final Account account) {
     final AccountManager am = AccountManager.get(mContext);
     final String privateKeyString = am.getUserData(account, KEY_PRIVATEKEY);
