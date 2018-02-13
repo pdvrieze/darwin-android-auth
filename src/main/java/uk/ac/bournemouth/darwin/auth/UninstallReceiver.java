@@ -27,7 +27,7 @@ import android.util.Log;
 
 
 /**
- * Created by pdvrieze on 13/01/16.
+ * Broadcast receiver that takes care of removing package permissions for uninstalled packages.
  */
 public class UninstallReceiver extends BroadcastReceiver {
 
@@ -35,7 +35,7 @@ public class UninstallReceiver extends BroadcastReceiver {
 
   @Override
   public void onReceive(final Context context, final Intent intent) {
-    Log.d(TAG, "onReceive() called with: " + "context = [" + context + "], intent = [" + intent + "]");
+    Log.d(TAG, "onReceive() called with: " + "context = [" + context + "], intent = [" + intent + ']');
     final String action = intent.getAction();
     if (Intent.ACTION_UNINSTALL_PACKAGE.equals(action)) {
       if (BuildConfig.DEBUG) {
@@ -59,13 +59,13 @@ public class UninstallReceiver extends BroadcastReceiver {
     }
   }
 
-  private void doRemovePackagePermissions(final Intent intent, final Context context) {
-    int uninstallUid = intent.getIntExtra(Intent.EXTRA_UID, -1);
-    boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+  private static void doRemovePackagePermissions(final Intent intent, final Context context) {
+    final int     uninstallUid = intent.getIntExtra(Intent.EXTRA_UID, -1);
+    final boolean replacing    = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
     if (! replacing) {
-      AccountManager am = AccountManager.get(context);
-      Account[] accounts = am.getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE);
-      for(Account account:accounts) {
+      final AccountManager am       = AccountManager.get(context);
+      final Account[]      accounts = am.getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE);
+      for(final Account account:accounts) {
         DarwinAuthenticator.removeAllowedUid(am, account, uninstallUid);
       }
     }

@@ -15,19 +15,21 @@
  */
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '24.2.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '24.0.2' }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '26.1.0' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '26.0.2' }
+    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 26 }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { androidPluginVersion = '2.2.0' }
+        if (! has('androidPluginVersion') ) { androidPluginVersion = '3.0.1' }
     }
     repositories {
         jcenter()
+	google()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:${androidPluginVersion}"
+        classpath 'com.android.tools.build:gradle:3.0.1'
     }
 }
 
@@ -44,13 +46,13 @@ dependencies {
 }
 
 android {
-    compileSdkVersion 24
+    compileSdkVersion androidTarget
     buildToolsVersion "${androidBuildToolsVersion}"
 
     defaultConfig {
-        minSdkVersion 11
-        targetSdkVersion 24
-        versionCode 1002003
+        minSdkVersion 14
+        targetSdkVersion androidTarget
+        versionCode 1002004
         versionName version
     }
 
@@ -68,8 +70,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     buildTypes {
@@ -81,7 +83,6 @@ android {
 //            signingConfig signingConfigs.releaseConfig
             minifyEnabled true
             shrinkResources true
-            useJack false
         }
     }
 }

@@ -112,8 +112,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         if (isCancelled()) { return AuthResult.CANCELLED; }
       }
       publishProgress(getText(R.string.authenticating));
-      final AuthResult authResult = registerPublicKey(mAuthBaseUrl, aUsername, password, (RSAPublicKey) (keypair == null ? null : keypair
-              .getPublic()));
+      assert keypair!=null;
+      final AuthResult authResult = registerPublicKey(mAuthBaseUrl, aUsername, password, (RSAPublicKey) (keypair.getPublic()));
       if (authResult != AuthResult.SUCCESS) {
         return authResult;
       }
@@ -496,8 +496,8 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
   }
 
   /** Try to authenticate by registering the public key to the server. */
-  private AuthResult registerPublicKey(final String authBaseUrl, final String username, final String password, final RSAPublicKey publicKey) {
-    final String encodedPublicKey = publicKey == null ? null : DarwinAuthenticator.encodePublicKey(publicKey);
+  private AuthResult registerPublicKey(@NonNull final String authBaseUrl, @NonNull final String username, @NonNull final String password, @NonNull final RSAPublicKey publicKey) {
+    final String encodedPublicKey = DarwinAuthenticator.encodePublicKey(publicKey);
     Log.d(TAG, "registering encoded public key at id ("+mKeyId+"):"+encodedPublicKey);
     Log.d(TAG, "public exp:"+Base64.encodeToString(publicKey.getPublicExponent().toByteArray(), 0));
     Log.d(TAG, "public mod:"+Base64.encodeToString(publicKey.getModulus().toByteArray(), 0));
@@ -509,7 +509,7 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf8");
         {
-          BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Util.UTF8));
+          final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), Util.UTF8));
           try {
             out.write("username=");
             out.write(URLEncoder.encode(username, Util.UTF8.name()));
@@ -564,9 +564,9 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
     }
   }
 
-  private String getAppName() {
+  private static String getAppName() {
     if(Build.MODEL.contains(Build.MANUFACTURER)) { return "DarwinAuthenticator on "+Build.MODEL; }
-    return "DarwinAuthenticator on "+Build.MANUFACTURER+" "+Build.MODEL;
+    return "DarwinAuthenticator on " + Build.MANUFACTURER + ' ' + Build.MODEL;
   }
 
   private static void logStream(final InputStream errorStream) throws IOException {
@@ -593,15 +593,20 @@ public class DarwinAuthenticatorActivity extends AccountAuthenticatorActivity im
    */
   private void storeCredentials(@NonNull final Account account, final long keyId, @NonNull final KeyPair keyPair, @NonNull final String authbase) {
     final String keyspec = DarwinAuthenticator.encodePrivateKey((RSAPrivateKey) keyPair.getPrivate());
-    if (!mLockedUsername) {
+
+    boolean updateUser=mLockedUsername;
+    if (!updateUser) {
       final Bundle bundle = new Bundle(3);
       bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       bundle.putString(DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
       bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, authbase);
-      mAccountManager.addAccountExplicitly(account, null, bundle);
-    } else {
+      updateUser = !mAccountManager.addAccountExplicitly(account, null, bundle);
+    }
+
+    if(updateUser){
       mAccountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec);
       mAccountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, Long.toString(keyId));
+      mAccountManager.setUserData(account, DarwinAuthenticator.KEY_AUTH_BASE, authbase);
     }
   }
 
