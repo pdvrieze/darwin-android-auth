@@ -15,9 +15,9 @@
  */
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '26.1.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '26.0.2' }
-    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 26 }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '27.0.2' }
+    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '27.0.2' }
+    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 27 }
 }
 
 buildscript {
@@ -26,11 +26,16 @@ buildscript {
     }
     repositories {
         jcenter()
-	google()
+	    google()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
     }
+}
+
+repositories {
+    jcenter()
+    google()
 }
 
 apply plugin: 'com.android.application'
@@ -42,7 +47,7 @@ dependencies {
     compile "com.android.support:support-annotations:${androidCompatVersion}"
     compile "com.android.support:support-v4:${androidCompatVersion}"
 //    testCompile 'junit:junit:4.12'
-    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha9'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
 }
 
 android {
