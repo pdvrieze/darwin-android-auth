@@ -1,0 +1,17 @@
+[{
+  "relation": [ "delegate_permission/common.get_login_creds"],
+  "target": {
+    "namespace": "web",
+    "site": "https://darwin.bournemouth.ac.uk"
+  }
+},
+{
+  "relation": ["delegate_permission/common.get_login_creds"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "uk.ac.bournemouth.darwin.auth",
+    "sha256_cert_fingerprints": [
+      "35:2C:74:2E:4D:5C:8C:15:BA:E0:48:F9:EA:46:DE:5A:BA:C5:C2:2B:2D:FA:56:75:7B:D1:03:7C:D0:8C:83:66"
+    ]
+  }
+}]
