@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,29 +10,27 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
 
 ext {
-    if (!rootProject.hasProperty('androidBuildToolsVersion')) {
-        androidBuildToolsVersion = '25.0.3'
-    }
     if (!rootProject.hasProperty('androidCompatVersion')) {
-        androidCompatVersion = '25.3.1'
+        androidCompatVersion = '27.1.1'
     }
 }
 
 buildscript {
     ext {
-        if (! rootProject.hasProperty('androidPluginVersion') ) { androidPluginVersion = '2.3.3' }
+        if (! rootProject.hasProperty('androidPluginVersion') ) { androidPluginVersion = '3.1.0' }
     }
     repositories {
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.3'
+        classpath "com.android.tools.build:gradle:${androidPluginVersion}"
     }
 }
 
@@ -49,12 +47,11 @@ dependencies {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "${androidBuildToolsVersion}"
+    compileSdkVersion 27
 
     defaultConfig {
-        minSdkVersion 11
-        targetSdkVersion 25
+        minSdkVersion 14
+        targetSdkVersion 27
         versionCode 1002003
         versionName version
     }
@@ -73,8 +70,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     buildTypes {
