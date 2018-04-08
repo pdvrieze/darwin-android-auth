@@ -24,6 +24,7 @@ ext {
 buildscript {
     ext {
         if (! rootProject.hasProperty('androidPluginVersion') ) { androidPluginVersion = '3.1.0' }
+        if (! rootProject.hasProperty('kotlin_version') ) { androidPluginVersion = '1.2.30' }
     }
     repositories {
         jcenter()
@@ -31,10 +32,13 @@ buildscript {
     }
     dependencies {
         classpath "com.android.tools.build:gradle:${androidPluginVersion}"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
 
 version = '1.2.3'
 description = 'Authentication library providing accounts that link against android.'
@@ -42,6 +46,9 @@ description = 'Authentication library providing accounts that link against andro
 dependencies {
     implementation "com.android.support:support-annotations:${androidCompatVersion}"
     implementation "com.android.support:support-v4:${androidCompatVersion}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+//    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.20"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3"
 //    testImplementation 'junit:junit:4.12'
 //    implementation 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
 }
@@ -84,5 +91,12 @@ android {
             minifyEnabled true
             shrinkResources true
         }
+    }
+}
+
+
+kotlin {
+    experimental {
+        coroutines "enable"
     }
 }
