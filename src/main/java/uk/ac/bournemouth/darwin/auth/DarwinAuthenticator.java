@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,7 +10,7 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
@@ -331,12 +331,7 @@ public class DarwinAuthenticator extends AbstractAccountAuthenticator {
   }
 
   private Bundle requestAuthTokenPermission(final AccountAuthenticatorResponse response, final Account account, final Bundle options) {
-    final Intent intent = new Intent(mContext, AuthTokenPermissionActivity.class);
-    intent.putExtra(KEY_ACCOUNT, account);
-    intent.putExtra(AccountManager.KEY_CALLER_UID, options.getInt(AccountManager.KEY_CALLER_UID));
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-      intent.putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME));
-    }
+    final Intent intent = AuthTokenPermissionActivity.intent(mContext, account, options.getInt(AccountManager.KEY_CALLER_UID), options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME));
 
     final Bundle bundle = new Bundle(1);
     bundle.putParcelable(AccountManager.KEY_INTENT, intent);
