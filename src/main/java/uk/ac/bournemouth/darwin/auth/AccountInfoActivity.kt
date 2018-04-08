@@ -18,23 +18,19 @@ package uk.ac.bournemouth.darwin.auth
 
 import android.accounts.*
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.ScrollView
 import android.widget.TextView
 import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.launch
 import nl.adaptivity.android.coroutines.Maybe
 import nl.adaptivity.android.coroutines.activityResult
 import nl.adaptivity.android.coroutines.getAuthToken
 
-import java.io.IOException
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.security.Security
-import java.util.ArrayList
 import java.util.TreeMap
 
 
@@ -46,16 +42,15 @@ class AccountInfoActivity : Activity() {
     private var isWaitingForIntent = false
     private var isTryingToCreateAccount: Boolean = false
 
-    protected override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         if (savedInstanceState != null) {
-            isTryingToCreateAccount = savedInstanceState.getBoolean(KEY_TRYINGTOCREATEACCOUNT, false)
+            isTryingToCreateAccount = savedInstanceState.tryingToCreateAccount
         }
 
-        val scrollview = ScrollView(this)
         textView = TextView(this)
-        scrollview.addView(textView)
+        setContentView(ScrollView(this).apply { addView(textView) })
 
         val text = buildString {
             val text = this
@@ -76,11 +71,10 @@ class AccountInfoActivity : Activity() {
                 }
             }
         }
-        textView.setText(text)
-        setContentView(scrollview)
+        textView.text = text
     }
 
-    protected override fun onResume() {
+    override fun onResume() {
         super.onResume()
 
         launch {
@@ -91,51 +85,55 @@ class AccountInfoActivity : Activity() {
                                             DarwinAuthenticator.ACCOUNT_TOKEN_TYPE)
                 if (token != null) {
                     val newText = "Got an auth token: " + token
-                    Log.v("ACCOUNTINFO", newText.toString())
+                    Log.v("ACCOUNTINFO", newText)
 
                     am.invalidateAuthToken(DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, token)
                     launch(UI) { textView.text = newText }
                 }
-            } else {if (! isTryingToCreateAccount) {
-                val intent = AccountManager.newChooseAccountIntent(null,
-                                                                   null,
-                                                                   arrayOf(DarwinAuthenticator.ACCOUNT_TYPE), null,
-                                                                   DarwinAuthenticator.ACCOUNT_TOKEN_TYPE, emptyArray(),
-                                                                   null)
-                when(activityResult(intent)) {
-                    is Maybe.Cancelled -> launch(UI) { textView.setText(R.string.lbl_account_creation_cancelled) }
-                    else -> Unit
-                }
-                isTryingToCreateAccount = true
             } else {
-                launch(UI) { textView.setText(R.string.lbl_account_creation_cancelled) }
-            }
+                if (!isTryingToCreateAccount) {
+                    val intent = AccountManager.newChooseAccountIntent(null,
+                                                                       null,
+                                                                       arrayOf(DarwinAuthenticator.ACCOUNT_TYPE), null,
+                                                                       DarwinAuthenticator.ACCOUNT_TOKEN_TYPE,
+                                                                       emptyArray(),
+                                                                       null)
+                    when (activityResult(intent)) {
+                        is Maybe.Cancelled -> launch(UI) { textView.setText(R.string.lbl_account_creation_cancelled) }
+                        else               -> Unit
+                    }
+                    isTryingToCreateAccount = true
+                } else {
+                    launch(UI) { textView.setText(R.string.lbl_account_creation_cancelled) }
+                }
             }
             Unit
 
         }
     }
 
-    protected override fun onSaveInstanceState(outState: Bundle) {
+    override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean(KEY_TRYINGTOCREATEACCOUNT, isTryingToCreateAccount)
+        outState.tryingToCreateAccount = isTryingToCreateAccount
     }
 
     private fun reportException(throwable: Throwable) {
         val writer = StringWriter()
         throwable.printStackTrace(PrintWriter(writer))
-        textView!!.setText(getString(R.string.lbl_cancellation_exception_report, writer.toString()))
+        textView.setText(getString(R.string.lbl_cancellation_exception_report, writer.toString()))
         Log.w("ACCOUNTINFO", throwable)
     }
 
-    protected override fun onPause() {
+    override fun onPause() {
         super.onPause()
-        textView!!.setText(R.string.lbl_getting_token)
+        textView.setText(R.string.lbl_getting_token)
     }
 
     companion object {
 
-        private val KEY_TRYINGTOCREATEACCOUNT = "tryingToCreateAccount"
+        var Bundle.tryingToCreateAccount
+            get() = getBoolean("tryingToCreateAccount", false)
+            set(value) = putBoolean("tryingToCreateAccount", value)
     }
 
 
