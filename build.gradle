@@ -40,10 +40,10 @@ version = '1.2.3'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
-    compile "com.android.support:support-annotations:${androidCompatVersion}"
-    compile "com.android.support:support-v4:${androidCompatVersion}"
-//    testCompile 'junit:junit:4.12'
-//    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    implementation "com.android.support:support-annotations:${androidCompatVersion}"
+    implementation "com.android.support:support-v4:${androidCompatVersion}"
+//    testImplementation 'junit:junit:4.12'
+//    implementation 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
 }
 
 android {
