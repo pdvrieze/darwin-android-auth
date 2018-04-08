@@ -66,7 +66,7 @@ class AuthTokenPermissionActivity : Activity(), OnClickListener {
     override fun onClick(v: View) {
         when (v.id) {
             R.id.okbutton     -> {
-                DarwinAuthenticator.addAllowedUid(AccountManager.get(this), binding.account, callerUid)
+                DarwinAuthenticator.addAllowedUid(AccountManager.get(this), binding.account!!, callerUid)
                 finish()
             }
         // fall-through
@@ -75,15 +75,6 @@ class AuthTokenPermissionActivity : Activity(), OnClickListener {
     }
 
     companion object {
-        @JvmStatic
-        fun Context.intent(account: Account, callerUid: Int, packageName: String?): Intent {
-            return Intent(this, AuthTokenPermissionActivity::class.java).apply {
-                putExtra(DarwinAuthenticator.KEY_ACCOUNT, account)
-                putExtra(AccountManager.KEY_CALLER_UID, callerUid)
-                packageName?.let { putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, it) }
-            }
-        }
-
         private val Intent.account: Account? get() = getParcelableExtra<Account>(DarwinAuthenticator.KEY_ACCOUNT)
         private val Intent.callerUid: Int get() = getIntExtra(AccountManager.KEY_CALLER_UID, -1)
         private val Intent.packageName:String? get() = getStringExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME)
@@ -91,4 +82,12 @@ class AuthTokenPermissionActivity : Activity(), OnClickListener {
         private val TAG = "AuthTokenPermissionAct"
     }
 
+}
+
+fun Context.authTokenPermissionActivity(account: Account, callerUid: Int, packageName: String?): Intent {
+    return Intent(this, AuthTokenPermissionActivity::class.java).apply {
+        putExtra(DarwinAuthenticator.KEY_ACCOUNT, account)
+        putExtra(AccountManager.KEY_CALLER_UID, callerUid)
+        packageName?.let { putExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME, it) }
+    }
 }

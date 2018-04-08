@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,33 +10,31 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
-package uk.ac.bournemouth.darwin.auth;
+package uk.ac.bournemouth.darwin.auth
 
-import android.app.Service;
-import android.content.Intent;
-import android.os.IBinder;
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
 
 
 /**
  * The service that makes the authenticator available.
  */
-public class DarwinAuthenticatorService extends Service {
+class DarwinAuthenticatorService : Service() {
 
-  private DarwinAuthenticator mAuthenticator;
+    private lateinit var authenticator: DarwinAuthenticator
 
-  @Override
-  public void onCreate() {
-    super.onCreate();
-    mAuthenticator = new DarwinAuthenticator(this);
-  }
+    override fun onCreate() {
+        super.onCreate()
+        authenticator = DarwinAuthenticator(this)
+    }
 
-  @Override
-  public IBinder onBind(final Intent arg0) {
-    return mAuthenticator.getIBinder();
-  }
+    override fun onBind(intent: Intent): IBinder? {
+        return authenticator.iBinder
+    }
 
 }
