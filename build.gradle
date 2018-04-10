@@ -15,27 +15,26 @@
  */
 
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '26.1.0' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '26.0.2' }
-    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 26 }
+    if (! has('androidCompatVersion') ) { androidCompatVersion = '27.1.1' }
+    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 27 }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { androidPluginVersion = '3.0.1' }
+        if (! has('androidPluginVersion') ) { c = '3.1.1' }
     }
     repositories {
         jcenter()
 	google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath "com.android.tools.build:gradle:${androidPluginVersion}"
     }
 }
 
 apply plugin: 'com.android.application'
 
-version = '1.2.3'
+version = '1.2.5'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
@@ -52,18 +51,9 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion androidTarget
-        versionCode 1002004
+        versionCode 1002005
         versionName version
     }
-
-//    signingConfigs {
-//        releaseConfig {
-//            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
-//            storePassword System.getenv("ANDROID_STORE_PASSWD")
-//            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
-//            keyPassword System.getenv("ANDROID_KEY_PASSWD")
-//        }
-//    }
 
     dataBinding {
         enabled = true
