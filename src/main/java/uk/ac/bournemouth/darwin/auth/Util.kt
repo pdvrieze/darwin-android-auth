@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,23 +10,17 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
-package uk.ac.bournemouth.darwin.auth;
+@file:JvmName("Util")
 
-import java.nio.charset.Charset;
+package uk.ac.bournemouth.darwin.auth
+
+import java.nio.charset.Charset
 
 
-/**
- * A simple utility class that provides a constant for the UTF-8 {@link Charset}.
- */
-public final class Util {
-  
-  private Util() {}
-
-  /** The UTF8 Character set */
-  static final Charset UTF8=Charset.forName("UTF-8");
-
-}
+/** The UTF8 Character set  */
+@JvmField
+val UTF8 = Charset.forName("UTF-8")

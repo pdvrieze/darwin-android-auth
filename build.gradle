@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,47 +10,57 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
+
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '27.1.1' }
-    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 27 }
+    if (!rootProject.hasProperty('androidCompatVersion')) {
+        androidCompatVersion = '27.1.1'
+    }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { c = '3.1.1' }
+        if (! rootProject.hasProperty('androidPluginVersion') ) { androidPluginVersion = '3.1.0' }
+        if (! rootProject.hasProperty('kotlin_version') ) { androidPluginVersion = '1.2.30' }
     }
     repositories {
         jcenter()
-	google()
+        google()
     }
     dependencies {
         classpath "com.android.tools.build:gradle:${androidPluginVersion}"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
 version = '1.2.5'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
-    compile "com.android.support:support-annotations:${androidCompatVersion}"
-    compile "com.android.support:support-v4:${androidCompatVersion}"
-//    testCompile 'junit:junit:4.12'
-//    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    implementation "com.android.support:support-annotations:${androidCompatVersion}"
+    implementation "com.android.support:support-v4:${androidCompatVersion}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+//    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.20"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3"
+    implementation "net.devrieze:android-coroutines:0.6.2"
+//    testImplementation 'junit:junit:4.12'
+//    implementation 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
 }
 
 android {
-    compileSdkVersion androidTarget
-    buildToolsVersion "${androidBuildToolsVersion}"
+    compileSdkVersion 27
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion androidTarget
+        targetSdkVersion 27
         versionCode 1002005
         versionName version
     }
@@ -74,5 +84,12 @@ android {
             minifyEnabled true
             shrinkResources true
         }
+    }
+}
+
+
+kotlin {
+    experimental {
+        coroutines "enable"
     }
 }
