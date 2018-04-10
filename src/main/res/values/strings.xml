@@ -41,4 +41,5 @@
     <string name="btn_no">No</string>
     <string name="btn_yes">Yes</string>
     <string name="error_invalid_tokenType">invalid authTokenType</string>
+    <string name="err_unable_to_get_auth_key">Could not get authentication key</string>
 </resources>

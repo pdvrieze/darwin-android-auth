@@ -70,9 +70,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         return null
     }
 
-    private fun invalidResult(@StringRes message: Int) = Bundle(1).apply {
-        putString(AccountManager.KEY_ERROR_MESSAGE, context.getString(message))
-    }
+    private fun errorResult(@StringRes message: Int) = context.getString(message).toErrorBundle()
 
     @Throws(NetworkErrorException::class)
     override fun addAccount(response: AccountAuthenticatorResponse,
@@ -85,29 +83,20 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                   requiredFeatures)}], options = [$options]")
 
         if (!(authTokenType == null || ACCOUNT_TOKEN_TYPE == authTokenType)) {
-            return invalidResult(R.string.error_invalid_tokenType)
+            return errorResult(R.string.error_invalid_tokenType)
         }
-        val intent = Intent(context, DarwinAuthenticatorActivity::class.java)
-        intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response)
-        intent.putExtra(KEY_AUTH_BASE, getAuthBase(options))
-        val bundle = Bundle()
-        bundle.putParcelable(AccountManager.KEY_INTENT, intent)
-        return bundle
+        return context.darwinAuthenticatorActivity(null, options.authBase, response = response).toResultBundle()
     }
 
     @Throws(NetworkErrorException::class)
     override fun confirmCredentials(response: AccountAuthenticatorResponse, account: Account, options: Bundle): Bundle {
         val am = AccountManager.get(context)
-        val intent = Intent(context, DarwinAuthenticatorActivity::class.java)
-        intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response)
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account)
-        intent.putExtra(KEY_AUTH_BASE, am.getUserData(account, KEY_AUTH_BASE))
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, true)
-        val keyid = java.lang.Long.parseLong(am.getUserData(account, KEY_KEYID))
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid)
-        val bundle = Bundle()
-        bundle.putParcelable(AccountManager.KEY_INTENT, intent)
-        return bundle
+        val intent = context.darwinAuthenticatorActivity(account,
+                                                         am.getUserData(account, KEY_AUTH_BASE),
+                                                         true,
+                                                         am.getUserData(account, KEY_KEYID).toLongOrNull() ?: -1L,
+                                                         response)
+        return intent.toResultBundle()
     }
 
     @Throws(NetworkErrorException::class)
@@ -116,9 +105,8 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                               authTokenType: String,
                               options: Bundle): Bundle? {
         Log.d(TAG,
-              "getAuthToken() called with: " + "response = [" + response + "], account = [" + account + "], authTokenType = [" + authTokenType + "], options = [" + toString(
-                  options) +
-              ']'.toString())
+              "getAuthToken() called with: response = [$response], account = [$account], authTokenType = [$authTokenType], options = [${toString(
+                  options)}]")
         if (authTokenType != ACCOUNT_TOKEN_TYPE) {
             response.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType")
             return null // the response has the error
@@ -132,10 +120,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
             return requestAuthTokenPermission(response, account, options)
         }
 
-        var authBaseUrl: String? = am.getUserData(account, KEY_AUTH_BASE)
-        if (authBaseUrl == null) {
-            authBaseUrl = DEFAULT_AUTH_BASE_URL
-        }
+        val authBaseUrl: String = am.getUserData(account, KEY_AUTH_BASE) ?: DEFAULT_AUTH_BASE_URL
 
         try {
             val keyInfo = getKeyInfo(account)
@@ -155,14 +140,6 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                     }
 
                     val responseBuffer = base64encode(encrypt(challenge.data, keyInfo.privateKey, challenge.version))
-                    /*
-          if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Challenge: "+new String(challenge));
-            Log.d(TAG, "Response: "+new String(responseBuffer));
-            Log.d(TAG, "Private key exp: "+Base64.encodeToString(keyInfo.privateKey.getPrivateExponent().toByteArray(),0)+
-                       " modulus: "+Base64.encodeToString(keyInfo.privateKey.getModulus().toByteArray(), 0));
-          }
-*/
 
                     val conn = challenge.responseUri.toURL().openConnection() as HttpURLConnection
 
@@ -186,7 +163,8 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                                     if (!(c in 'A'..'Z' || c in 'a'..'z' ||
                                           c in '0'..'9' || c == '+' || c == '/' ||
                                           c == '=' || c == ' ' || c == '-' || c == '_' || c == ':')) {
-                                        response.onError(ERROR_INVALID_TOKEN, "The token contains illegal characters (${String(cookie)}]")
+                                        response.onError(ERROR_INVALID_TOKEN,
+                                                         "The token contains illegal characters (${String(cookie)}]")
                                         return null
                                     }
                                 }
@@ -195,10 +173,9 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                             }
                         } catch (e: IOException) {
                             if (conn.responseCode != HttpURLConnection.HTTP_UNAUTHORIZED) {
+                                val intent = context.darwinAuthenticatorActivity(null, authBaseUrl, response = response)
                                 // reauthenticate
-                                val intent = Intent(context, DarwinAuthenticatorActivity::class.java)
-                                intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response)
-                                return intent.toBundle()
+                                return intent.toResultBundle()
 
                             } else if (conn.responseCode != HttpURLConnection.HTTP_NOT_FOUND) { // We try again if we didn't get the right code.
                                 val result = Bundle()
@@ -218,19 +195,15 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                 }
 
             }
-            return Bundle(1).apply { putString(AccountManager.KEY_ERROR_MESSAGE, "Could not get authentication key") }
+            return errorResult(R.string.err_unable_to_get_auth_key)
         } catch (e: StaleCredentialsException) {
-            val result = Bundle()
-            result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl))
-            return result
+            return context.darwinAuthenticatorActivity(account, authBaseUrl).toResultBundle()
         }
 
     }
 
     private fun initiateUpdateCredentials(account: Account, authBaseUrl: String): Bundle {
-        val result = Bundle()
-        result.putParcelable(AccountManager.KEY_INTENT, getUpdateCredentialsBaseIntent(account, authBaseUrl))
-        return result
+        return context.darwinAuthenticatorActivity(account, authBaseUrl).toResultBundle()
     }
 
     private fun requestAuthTokenPermission(response: AccountAuthenticatorResponse,
@@ -240,10 +213,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                                                          options.getInt(AccountManager.KEY_CALLER_UID),
                                                          options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME))
 
-        val bundle = Bundle(1)
-        bundle.putParcelable(AccountManager.KEY_INTENT, intent)
-        response.onResult(bundle)
-        return bundle
+        return intent.toResultBundle().also { response.onResult(it) }
     }
 
     private fun isAuthTokenAllowed(response: AccountAuthenticatorResponse, account: Account, options: Bundle): Boolean {
@@ -290,21 +260,11 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                                    options: Bundle): Bundle {
         val am = AccountManager.get(context)
         val authbase = am.getUserData(account, KEY_AUTH_BASE)
-        val intent = getUpdateCredentialsBaseIntent(account, authbase)
-        intent.putExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response)
 
         val keyid = am.getUserData(account, KEY_KEYID).toLong()
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_KEYID, keyid)
+        val intent = context.darwinAuthenticatorActivity(account, authbase, false, keyid, response)
 
-        return Bundle(1).apply { putParcelable(AccountManager.KEY_INTENT, intent) }
-    }
-
-    private fun getUpdateCredentialsBaseIntent(account: Account, authBaseUrl: String): Intent {
-        val intent = Intent(context, DarwinAuthenticatorActivity::class.java)
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_ACCOUNT, account)
-        intent.putExtra(DarwinAuthenticatorActivity.PARAM_CONFIRM, false)
-        intent.putExtra(DarwinAuthenticator.KEY_AUTH_BASE, authBaseUrl)
-        return intent
+        return intent.toResultBundle()
     }
 
     @Throws(NetworkErrorException::class)
@@ -452,16 +412,16 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
             }
         }
 
-        private fun base64encode(`in`: ByteArray?): ByteArray {
-            return Base64.encode(`in`, BASE64_FLAGS)
+        private fun base64encode(input: ByteArray?): ByteArray {
+            return Base64.encode(input, BASE64_FLAGS)
         }
 
         @Throws(IOException::class, StaleCredentialsException::class)
         private fun readChallenge(account: Account, authBaseUrl: String, keyInfo: KeyInfo): ChallengeInfo? {
-            val challengeUrl = URI.create(getChallengeUrl(authBaseUrl).toString() + "?keyid=" + keyInfo.keyId)
+            val challengeUrl = URI.create("${getChallengeUrl(authBaseUrl)}?keyid=${keyInfo.keyId}")
             val connection = challengeUrl.toURL().openConnection() as HttpURLConnection
-            connection.instanceFollowRedirects = false// We should get the response url.
             try {
+                connection.instanceFollowRedirects = false// We should get the response url.
                 val responseUrl: URI = connection.getHeaderField(HEADER_RESPONSE)?.let { URI.create(it) }
                                        ?: challengeUrl
                 val version = when (connection.getHeaderField(HEADER_CHALLENGE_VERSION)) {
@@ -494,20 +454,12 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         }
 
         private fun getChallengeUrl(authBaseUrl: String): URI {
-            return URI.create(authBaseUrl + "challenge")
-        }
-
-        private fun getAuthBase(options: Bundle): String {
-            var authBaseUrl = options.getString(KEY_AUTH_BASE)
-            if (authBaseUrl == null) {
-                authBaseUrl = DEFAULT_AUTH_BASE_URL
-            }
-            return authBaseUrl
+            return URI.create("${authBaseUrl}challenge")
         }
 
         @JvmStatic
         fun getAuthenticateUrl(authBaseUrl: String): URI {
-            return URI.create(authBaseUrl + "regkey")
+            return URI.create("${authBaseUrl}regkey")
         }
 
         @JvmStatic
@@ -529,6 +481,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                 Log.d(TAG, "Registering public key: (${publicKey.modulus}, ${publicKey.publicExponent}) $it")
             }
         }
+
     }
 
     private fun getPrivateKey(privateKeyString: String): RSAPrivateKey? {
@@ -576,6 +529,12 @@ var Bundle.customTokenExpiry: Long
     get() = getLong(AbstractAccountAuthenticator.KEY_CUSTOM_TOKEN_EXPIRY, -1L)
     set(value) = putLong(AbstractAccountAuthenticator.KEY_CUSTOM_TOKEN_EXPIRY, value)
 
+
+var Bundle.authBase: String
+    get() = getString(DarwinAuthenticator.KEY_AUTH_BASE, DarwinAuthenticator.DEFAULT_AUTH_BASE_URL)
+    set(value) = putString(DarwinAuthenticator.KEY_AUTH_BASE, value)
+
+
 private fun createResultBundle(account: Account, cookie: ByteArray): Bundle {
     return Bundle(4).apply {
         accountName = account.name
@@ -583,10 +542,13 @@ private fun createResultBundle(account: Account, cookie: ByteArray): Bundle {
         authToken = String(cookie, UTF8)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            customTokenExpiry =System.currentTimeMillis() + EXPIRY_TIMEOUT
+            customTokenExpiry = System.currentTimeMillis() + EXPIRY_TIMEOUT
         }
 
     }
 }
 
-fun Intent.toBundle() = Bundle(1).apply { putParcelable(AccountManager.KEY_INTENT, this) }
+fun Intent.toResultBundle() = Bundle(1).apply { putParcelable(AccountManager.KEY_INTENT, this@toResultBundle) }
+
+private fun String.toErrorBundle() =
+    Bundle(1).apply { putString(AccountManager.KEY_ERROR_MESSAGE, this@toErrorBundle) }
