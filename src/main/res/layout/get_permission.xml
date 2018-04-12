@@ -82,35 +82,33 @@
 
         <Button
             android:id="@+id/cancelbutton"
+            style="?attr/buttonBarNegativeButtonStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/btn_no"
-            style="?attr/buttonBarNegativeButtonStyle"
-            tools:layout_constraintBottom_creator="1"
-            app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginBottom="1dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/okbutton"
-            android:layout_marginStart="16dp"
-            android:layout_marginLeft="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginRight="16dp"/>
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginStart="16dp"
+            android:text="@string/btn_no"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/okbutton"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:layout_constraintBottom_creator="1" />
 
         <Button
             android:id="@+id/okbutton"
+            style="?attr/buttonBarPositiveButtonStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/btn_yes"
-            android:layout_marginStart="16dp"
-            android:layout_marginLeft="16dp"
             android:layout_marginEnd="16dp"
+            android:layout_marginLeft="16dp"
             android:layout_marginRight="16dp"
-            app:layout_constraintStart_toEndOf="@id/cancelbutton"
-            app:layout_constraintEnd_toStartOf="parent"
+            android:layout_marginStart="16dp"
+            android:text="@string/btn_yes"
             app:layout_constraintBottom_toBottomOf="parent"
-            style="?attr/buttonBarNegativeButtonStyle"
-            tools:layout_editor_absoluteX="222dp"
-            />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/cancelbutton" />
 
 
     </android.support.constraint.ConstraintLayout>
