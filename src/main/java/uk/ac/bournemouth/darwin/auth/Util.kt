@@ -18,9 +18,32 @@
 
 package uk.ac.bournemouth.darwin.auth
 
+import android.databinding.BindingAdapter
+import android.graphics.Typeface
+import android.support.annotation.IntDef
+import android.text.format.DateUtils
+import android.widget.TextView
 import java.nio.charset.Charset
+import java.util.*
 
 
 /** The UTF8 Character set  */
 @JvmField
 val UTF8 = Charset.forName("UTF-8")
+
+@BindingAdapter("app:dateText")
+fun setDateText(view: TextView, date: Date?) {
+    if (date==null) {
+        view.text = view.context.getString(R.string.lastUseNever)
+    } else {
+        view.text = DateUtils.formatDateTime(view.context, date.time, 0)
+    }
+}
+
+@IntDef(value = [Typeface.NORMAL, Typeface.BOLD, Typeface.BOLD_ITALIC, Typeface.ITALIC])
+annotation class FlagTextStyle
+
+@BindingAdapter("android:textStyle")
+fun setTextStyle(view: TextView, @FlagTextStyle textStyle: Int) {
+    view.setTypeface(view.typeface, textStyle)
+}

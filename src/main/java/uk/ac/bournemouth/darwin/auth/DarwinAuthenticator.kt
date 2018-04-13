@@ -25,10 +25,6 @@ import android.os.Process
 import android.support.annotation.StringRes
 import android.util.Base64
 import android.util.Log
-import uk.ac.bournemouth.darwin.auth.DarwinAuthenticator.Companion.ACCOUNT_TOKEN_TYPE
-
-import javax.crypto.Cipher
-
 import java.io.IOException
 import java.math.BigInteger
 import java.net.HttpURLConnection
@@ -43,7 +39,8 @@ import java.security.interfaces.RSAPublicKey
 import java.security.spec.InvalidKeySpecException
 import java.security.spec.KeySpec
 import java.security.spec.RSAPrivateKeySpec
-import java.util.Arrays
+import java.util.*
+import javax.crypto.Cipher
 
 
 /**
@@ -58,7 +55,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
     // Object Initialization
     private class StaleCredentialsException : Exception()// The exception itself is enough
 
-    private data class KeyInfo(val keyId: Long, val privateKey: RSAPrivateKey)
+    private data class AuthenticatorKeyInfo(val keyId: Long, val privateKey: RSAPrivateKey)
 
     init {
         PRNGFixes.ensureApplied()
@@ -76,13 +73,13 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
     override fun addAccount(response: AccountAuthenticatorResponse,
                             accountType: String,
                             authTokenType: String?,
-                            requiredFeatures: Array<String>,
+                            requiredFeatures: Array<String>?,
                             options: Bundle): Bundle {
         Log.i(TAG,
               "addAccount() called with: response = [$response], accountType = [$accountType], authTokenType = [$authTokenType], requiredFeatures = [${Arrays.toString(
                   requiredFeatures)}], options = [$options]")
 
-        if (!(authTokenType == null || ACCOUNT_TOKEN_TYPE == authTokenType)) {
+        if (!(authTokenType == null || DWN_ACCOUNT_TOKEN_TYPE == authTokenType)) {
             return errorResult(R.string.error_invalid_tokenType)
         }
         return context.darwinAuthenticatorActivity(null, options.authBase, response = response).toResultBundle()
@@ -107,7 +104,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         Log.d(TAG,
               "getAuthToken() called with: response = [$response], account = [$account], authTokenType = [$authTokenType], options = [${toString(
                   options)}]")
-        if (authTokenType != ACCOUNT_TOKEN_TYPE) {
+        if (authTokenType != DWN_ACCOUNT_TOKEN_TYPE) {
             response.onError(ERRNO_INVALID_TOKENTYPE, "invalid authTokenType")
             return null // the response has the error
         }
@@ -120,11 +117,11 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
             return requestAuthTokenPermission(response, account, options)
         }
 
-        val authBaseUrl: String = am.getUserData(account, KEY_AUTH_BASE) ?: DEFAULT_AUTH_BASE_URL
+        val authBaseUrl: String = getAuthBase(am, account)
 
         try {
-            val keyInfo = getKeyInfo(account)
-            if (keyInfo == null || keyInfo.keyId < 0) {
+            val authKeyInfo = getAuthKeyInfo(account)
+            if (authKeyInfo == null || authKeyInfo.keyId < 0) {
                 // We are in an invalid state. We no longer have a private key. Redo authentication.
                 return initiateUpdateCredentials(account, authBaseUrl)
             }
@@ -133,13 +130,13 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                 // Get challenge
                 try {
 
-                    val challenge = readChallenge(account, authBaseUrl, keyInfo)
+                    val challenge = readChallenge(account, authBaseUrl, authKeyInfo)
 
                     if (challenge == null || challenge.data == null) {
                         return initiateUpdateCredentials(account, authBaseUrl)
                     }
 
-                    val responseBuffer = base64encode(encrypt(challenge.data, keyInfo.privateKey, challenge.version))
+                    val responseBuffer = base64encode(encrypt(challenge.data, authKeyInfo.privateKey, challenge.version))
 
                     val conn = challenge.responseUri.toURL().openConnection() as HttpURLConnection
 
@@ -202,6 +199,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
 
     }
 
+
     private fun initiateUpdateCredentials(account: Account, authBaseUrl: String): Bundle {
         return context.darwinAuthenticatorActivity(account, authBaseUrl).toResultBundle()
     }
@@ -237,18 +235,18 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         return isAllowedUid(am, account, callerUid, callerPackage)
     }
 
-    private fun getKeyInfo(account: Account): KeyInfo? {
+    private fun getAuthKeyInfo(account: Account): AuthenticatorKeyInfo? {
         val am = AccountManager.get(context)
         val privateKeyString = am.getUserData(account, KEY_PRIVATEKEY) ?: return null
         val privateKey = getPrivateKey(privateKeyString) ?: return null
         val keyId = am.getUserData(account, KEY_KEYID)?.toLongOrNull() ?: return null
-        return KeyInfo(keyId, privateKey)
+        return AuthenticatorKeyInfo(keyId, privateKey)
     }
 
     override fun getAuthTokenLabel(authTokenType: String): String? {
         Log.i(TAG, "Getting token label")
         return when (authTokenType) {
-            ACCOUNT_TOKEN_TYPE -> null
+            DWN_ACCOUNT_TOKEN_TYPE -> null
             else               -> context.getString(R.string.authtoken_label)
         }
     }
@@ -292,10 +290,6 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
 
     companion object {
 
-        /** The account type supported by the authenticator.  */
-        const val ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account"
-        /** The token type for darwin accounts. For now there is only this type.  */
-        const val ACCOUNT_TOKEN_TYPE = "uk.ac.bournemouth.darwin.auth"
         /** The argument name used to specify the base url for authentication.  */
         const val KEY_AUTH_BASE = "authbase"
 
@@ -417,8 +411,8 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         }
 
         @Throws(IOException::class, StaleCredentialsException::class)
-        private fun readChallenge(account: Account, authBaseUrl: String, keyInfo: KeyInfo): ChallengeInfo? {
-            val challengeUrl = URI.create("${getChallengeUrl(authBaseUrl)}?keyid=${keyInfo.keyId}")
+        private fun readChallenge(account: Account, authBaseUrl: String, authenticatorKeyInfo: AuthenticatorKeyInfo): ChallengeInfo? {
+            val challengeUrl = URI.create("${getChallengeUrl(authBaseUrl)}?keyid=${authenticatorKeyInfo.keyId}")
             val connection = challengeUrl.toURL().openConnection() as HttpURLConnection
             try {
                 connection.instanceFollowRedirects = false// We should get the response url.
@@ -458,8 +452,8 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         }
 
         @JvmStatic
-        fun getAuthenticateUrl(authBaseUrl: String): URI {
-            return URI.create("${authBaseUrl}regkey")
+        fun getAuthenticateUrl(authBaseUrl: String?): URI {
+            return URI.create("${if(authBaseUrl.isNullOrEmpty()) DEFAULT_AUTH_BASE_URL else authBaseUrl}regkey")
         }
 
         @JvmStatic
@@ -538,7 +532,7 @@ var Bundle.authBase: String
 private fun createResultBundle(account: Account, cookie: ByteArray): Bundle {
     return Bundle(4).apply {
         accountName = account.name
-        accountType = ACCOUNT_TOKEN_TYPE
+        accountType = DWN_ACCOUNT_TOKEN_TYPE
         authToken = String(cookie, UTF8)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -548,7 +542,15 @@ private fun createResultBundle(account: Account, cookie: ByteArray): Bundle {
     }
 }
 
+fun getAuthBase(am: AccountManager, account: Account) =
+        am.getUserData(account, DarwinAuthenticator.KEY_AUTH_BASE) ?: DarwinAuthenticator.DEFAULT_AUTH_BASE_URL
+
 fun Intent.toResultBundle() = Bundle(1).apply { putParcelable(AccountManager.KEY_INTENT, this@toResultBundle) }
 
 private fun String.toErrorBundle() =
     Bundle(1).apply { putString(AccountManager.KEY_ERROR_MESSAGE, this@toErrorBundle) }
+
+/** The account type supported by the authenticator.  */
+const val DWN_ACCOUNT_TYPE = "uk.ac.bournemouth.darwin.account"
+/** The token type for darwin accounts. For now there is only this type.  */
+const val DWN_ACCOUNT_TOKEN_TYPE = "uk.ac.bournemouth.darwin.auth"

@@ -56,7 +56,7 @@ class UninstallReceiver : BroadcastReceiver() {
             if (!replacing) {
                 AccountManager
                     .get(context)
-                    .getAccountsByType(DarwinAuthenticator.ACCOUNT_TYPE).forEach { account ->
+                    .getAccountsByType(DWN_ACCOUNT_TYPE).forEach { account ->
                     DarwinAuthenticator.removeAllowedUid(AccountManager.get(context), account, uninstallUid)
                 }
             }

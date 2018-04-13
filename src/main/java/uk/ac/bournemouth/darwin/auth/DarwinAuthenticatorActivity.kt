@@ -71,11 +71,9 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     private lateinit var accountManager: AccountManager
     private var keypair: Future<KeyPair>? = null
     private lateinit var binding: DarwinAuthenticatorActivityBinding
-    private var lockedUsername: Boolean = false
+
     private var account: Account? = null
     private var authenticatorResponse: AccountAuthenticatorResponse? = null
-
-    private lateinit var authBaseUrl: String
 
     private enum class AuthResult {
         CANCELLED,
@@ -126,7 +124,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
             }
             publishProgress(getText(R.string.authenticating))
             assert(keypair != null)
-            val authResult = registerPublicKey(authBaseUrl, aUsername, password, keypair!!.public as RSAPublicKey)
+            val authResult = registerPublicKey(binding.authBaseUrl, aUsername, password, keypair!!.public as RSAPublicKey)
             if (authResult != AuthResult.SUCCESS) {
                 return authResult
             }
@@ -142,7 +140,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
             when (result) {
                 DarwinAuthenticatorActivity.AuthResult.SUCCESS             -> {
                     try {
-                        storeCredentials(account, keyId, keypair!!.get(), authBaseUrl)
+                        storeCredentials(account, keyId, keypair!!.get(), binding.authBaseUrl)
                     } catch (e: InterruptedException) {
                         Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e)
                     } catch (e: ExecutionException) {
@@ -155,7 +153,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
 
                     val intent = Intent().apply {
                         putExtra(AccountManager.KEY_ACCOUNT_NAME, account.name)
-                        putExtra(AccountManager.KEY_ACCOUNT_TYPE, DarwinAuthenticator.ACCOUNT_TYPE)
+                        putExtra(AccountManager.KEY_ACCOUNT_TYPE, DWN_ACCOUNT_TYPE)
                         setAccountAuthenticatorResult(extras)
                     }
                     setResult(Activity.RESULT_OK, intent)
@@ -190,26 +188,32 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
         super.onCreate(icicle)
         PRNGFixes.ensureApplied()
 
-        val username: String?
-        var password: String? = null
+        binding = DataBindingUtil.setContentView(this, R.layout.get_password)
+
         if (icicle != null) {
             account = icicle.account
-            username = account?.getUsername() ?: icicle.username
+            with(binding) {
+                username = account?.getUsername() ?: icicle.username
 
-            lockedUsername = icicle.lockedUsername
+                usernameLocked = icicle.lockedUsername
+
+                password = icicle.password
+                authBaseUrl = icicle.authBase
+            }
 
             isConfirmCredentials = icicle.isConfirm
-            password = icicle.password
-            authBaseUrl = icicle.authBase
             keyId = icicle.keyid
             authenticatorResponse = icicle.authenticatorResponse
         } else {
             account = intent.account
-            username = account?.getUsername() ?: intent.username
-            lockedUsername = !username.isNullOrEmpty()
+            with(binding) {
+                val uname = account?.getUsername() ?: intent.username
 
+                username = uname
+                usernameLocked = !uname.isNullOrEmpty()
+                authBaseUrl = intent.authBase
+            }
             isConfirmCredentials = intent.isConfirm
-            authBaseUrl = intent.authBase
             keyId = intent.keyid
             authenticatorResponse = intent.authenticatorResponse
         }
@@ -219,19 +223,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
             accountManager.getUserData(account, PARAM_KEYID)?.toLongOrNull()?.let { keyId = it }
         }
 
-        binding = DataBindingUtil.setContentView(this, R.layout.get_password)
-
-        if (DarwinAuthenticator.DEFAULT_AUTH_BASE_URL != authBaseUrl) {
-            binding.authorityLabel.text = authBaseUrl
-        }
-
-        binding.editUsername.setText(username)
-
-        // Fixed username, so disable editing
-        binding.editUsername.isEnabled = !lockedUsername
-
         binding.editPassword.setOnEditorActionListener(this)
-        if (password != null) binding.editPassword.setText(password)
+
 
 
         binding.cancelbutton.setOnClickListener(this)
@@ -279,8 +272,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
             it.username = binding.editUsername.text?.toString()
             it.password = binding.editPassword.text?.toString()
             it.isConfirm = isConfirmCredentials
-            it.lockedUsername = lockedUsername
-            it.authBase = authBaseUrl
+            it.lockedUsername = binding.usernameLocked
+            it.authBase = binding.authBaseUrl ?: DarwinAuthenticator.DEFAULT_AUTH_BASE_URL
             it.account = account
             it.keyid = keyId
         }
@@ -296,19 +289,17 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
         super.onStop()
     }
 
-    override fun onCreateDialog(id: Int, args: Bundle): Dialog? {
-        when (id) {
-            DLG_PROGRESS    -> {
-                return createProcessDialog()
-            }
-            DLG_ERROR       -> {
-                return createErrorDialog()
-            }
-            DLG_INVALIDAUTH -> {
-                return createInvalidAuthDialog()
-            }
-            else            -> return null
+    override fun onCreateDialog(id: Int, args: Bundle?): Dialog? = when (id) {
+        DLG_PROGRESS    -> {
+            createProcessDialog()
         }
+        DLG_ERROR       -> {
+            createErrorDialog()
+        }
+        DLG_INVALIDAUTH -> {
+            createInvalidAuthDialog()
+        }
+        else            -> null
     }
 
     private fun createErrorDialog(): Dialog {
@@ -382,7 +373,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
         val account = if (currentAccount?.name == accountName) {
             currentAccount
         } else {
-            Account(accountName, DarwinAuthenticator.ACCOUNT_TYPE)
+            Account(accountName, DWN_ACCOUNT_TYPE)
         }
         authTask.execute(account, password)
 
@@ -390,8 +381,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
 
     private fun getAccountName(username: String): String {
         val accountName: String
-        if ((authBaseUrl == null || DarwinAuthenticator.DEFAULT_AUTH_BASE_URL == authBaseUrl) && username.indexOf(
-                '@') < 0) {
+        val authBaseUrl = binding.authBaseUrl?.let { if (it.isEmpty()) null else it } ?: DarwinAuthenticator.DEFAULT_AUTH_BASE_URL
+        if ((authBaseUrl == DarwinAuthenticator.DEFAULT_AUTH_BASE_URL) && username.indexOf('@') < 0) {
             accountName = username
         } else {
             val domain = Uri.parse(authBaseUrl).host.toLowerCase()
@@ -419,7 +410,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     }
 
     /** Try to authenticate by registering the public key to the server.  */
-    private fun registerPublicKey(authBaseUrl: String,
+    private fun registerPublicKey(authBaseUrl: String?,
                                   username: String,
                                   password: String,
                                   publicKey: RSAPublicKey): AuthResult {
@@ -484,23 +475,24 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
      * @param keyPair  The actual keypair to record for this user.
      * @param authbase The url that is the basis for this authentication. One authenticator can support multiple bases with
      */
-    private fun storeCredentials(account: Account, keyId: Long, keyPair: KeyPair, authbase: String) {
+    private fun storeCredentials(account: Account, keyId: Long, keyPair: KeyPair, authbase: String?) {
+        val realAuthbase = if (authbase.isNullOrEmpty()) DarwinAuthenticator.DEFAULT_AUTH_BASE_URL else authbase
         val keyspec = DarwinAuthenticator.encodePrivateKey(keyPair.private as RSAPrivateKey)
-        val accountManager = this.accountManager!!
+        val accountManager = this.accountManager
 
-        var updateUser = lockedUsername
+        var updateUser = binding.usernameLocked
         if (!updateUser) {
             val bundle = Bundle(3)
             bundle.putString(DarwinAuthenticator.KEY_PRIVATEKEY, keyspec)
             bundle.putString(DarwinAuthenticator.KEY_KEYID, java.lang.Long.toString(keyId))
-            bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, authbase)
+            bundle.putString(DarwinAuthenticator.KEY_AUTH_BASE, realAuthbase)
             updateUser = !accountManager.addAccountExplicitly(account, null, bundle)
         }
 
         if (updateUser) {
             accountManager.setUserData(account, DarwinAuthenticator.KEY_PRIVATEKEY, keyspec)
             accountManager.setUserData(account, DarwinAuthenticator.KEY_KEYID, java.lang.Long.toString(keyId))
-            accountManager.setUserData(account, DarwinAuthenticator.KEY_AUTH_BASE, authbase)
+            accountManager.setUserData(account, DarwinAuthenticator.KEY_AUTH_BASE, realAuthbase)
         }
     }
 
