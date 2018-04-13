@@ -89,11 +89,19 @@ android {
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
             resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-project.txt'
+
         }
         release {
 //            signingConfig signingConfigs.releaseConfig
             minifyEnabled true
             shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-project.txt'
         }
     }
 }
