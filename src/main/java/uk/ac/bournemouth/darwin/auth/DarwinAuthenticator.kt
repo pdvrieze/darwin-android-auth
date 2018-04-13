@@ -109,6 +109,9 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
             return null // the response has the error
         }
         val am = AccountManager.get(context)
+        if (am.accounts.none { it==account }) {
+            response.onError(ERROR_INVALID_ACCOUNT, "The account '$account' does not exist")
+        }
         //    if(! hasAccount(am, account)) {
         //      throw new IllegalArgumentException("The provided account does not exist");
         //    }
@@ -274,18 +277,24 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
                   features))
         val hasFeature = if (features.size == 1) {
             val am = AccountManager.get(context)
-            val authbase = am.getUserData(account, KEY_AUTH_BASE)
-            if (authbase == null) {
-                features[0] == null || DEFAULT_AUTH_BASE_URL == features[0]
+            if (am.accounts.none { it==account }) {
+                false
             } else {
-                authbase == features[0] || features[0] == null && DEFAULT_AUTH_BASE_URL == authbase
+                val authbase = am.getUserData(account, KEY_AUTH_BASE)
+                if (authbase == null) {
+                    features[0] == null || DEFAULT_AUTH_BASE_URL == features[0]
+                } else {
+                    authbase == features[0] || features[0] == null && DEFAULT_AUTH_BASE_URL == authbase
+                }
             }
         } else {
             false
         }
-        return Bundle()
-            .apply { putBoolean(AccountManager.KEY_BOOLEAN_RESULT, hasFeature) }
-            .also { Log.i(TAG, "hasFeatures() returned: $it -> $hasFeature") }
+        return Bundle(1)
+            .also {
+                it.putBoolean(AccountManager.KEY_BOOLEAN_RESULT, hasFeature)
+                Log.i(TAG, "hasFeatures() returned: $it -> $hasFeature")
+            }
     }
 
     companion object {
@@ -317,6 +326,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         private const val ERRNO_INVALID_TOKENTYPE = AccountManager.ERROR_CODE_BAD_ARGUMENTS
         private const val ERROR_INVALID_TOKEN_SIZE = AccountManager.ERROR_CODE_REMOTE_EXCEPTION
         private const val ERROR_INVALID_TOKEN = AccountManager.ERROR_CODE_REMOTE_EXCEPTION
+        private const val ERROR_INVALID_ACCOUNT = AccountManager.ERROR_CODE_BAD_ARGUMENTS
         private const val ERRORMSG_UNSUPPORTED_OPERATION = "Editing properties is not supported"
         private const val ERROR_UNSUPPORTED_OPERATION = AccountManager.ERROR_CODE_UNSUPPORTED_OPERATION
         private const val KEY_ALLOWED_UIDS = "allowedUids"
