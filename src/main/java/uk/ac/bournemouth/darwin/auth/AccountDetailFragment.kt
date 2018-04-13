@@ -56,14 +56,6 @@ class AccountDetailFragment : Fragment() {
             if (data.isNotEmpty()) submitList(data)
         }
 
-        override fun getItem(position: Int): KeyInfo {
-            return super.getItem(position)
-        }
-
-        override fun getItemCount(): Int {
-            return super.getItemCount()
-        }
-
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): KeyViewHolder {
             return KeyViewHolder(DataBindingUtil.inflate(LayoutInflater.from(parent.context), R.layout.key_list_content, parent, false))
         }
@@ -132,7 +124,6 @@ class AccountDetailFragment : Fragment() {
             Log.d("AccountDetailFragment", "authtoken: $token")
 
             val info = getAccountInfoHelper(authBaseUrl, token)
-            val data = accountInfo as MutableLiveData<AccountInfo>
 
             if (info != null) {
                 updateInfo(info)
