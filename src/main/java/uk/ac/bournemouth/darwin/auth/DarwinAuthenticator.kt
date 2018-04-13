@@ -437,7 +437,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
 
                 val challengeBytes: ByteArray
                 if (version != 1) {
-                    challengeBytes = Base64.decode(inBuffer, 0, readCount, Base64.DEFAULT)
+                    challengeBytes = Base64.decode(inBuffer, 0, readCount, Base64.URL_SAFE)
                 } else {
                     challengeBytes = Arrays.copyOf(inBuffer, readCount)
                 }
