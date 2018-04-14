@@ -54,18 +54,16 @@ dependencies {
     implementation "com.android.support:recyclerview-v7:${androidCompatVersion}"
     implementation "com.android.support:appcompat-v7:${androidCompatVersion}"
     implementation "com.android.support:cardview-v7:${androidCompatVersion}"
-    implementation 'com.android.support.constraint:constraint-layout:1.1.0-beta6'
-
-implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
     implementation 'com.esotericsoftware:kryo:4.0.1'
-    implementation 'net.devrieze:android-coroutines:0.6.3'
+    implementation 'net.devrieze:android-coroutines-appcompat:0.6.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.5'
     kapt "com.android.databinding:compiler:$androidPluginVersion"
 }
 
 android {
     compileSdkVersion 27
-
     defaultConfig {
         applicationId 'uk.ac.bournemouth.darwin.auth'
         minSdkVersion 14
@@ -74,27 +72,28 @@ android {
         versionName version
         resValue 'string', 'applicationId', applicationId
     }
-
     dataBinding {
         enabled = true
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+        }
+        debugMinified {
+            applicationIdSuffix ".debugmini"
+            versionNameSuffix "-debugmini"
             resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
 
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'),
                     'proguard-project.txt'
-
         }
         release {
 //            signingConfig signingConfigs.releaseConfig
