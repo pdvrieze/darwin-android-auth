@@ -59,6 +59,7 @@ dependencies {
     implementation 'com.esotericsoftware:kryo:4.0.1'
     implementation 'net.devrieze:android-coroutines-appcompat:0.6.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.5'
+    implementation "android.arch.lifecycle:extensions:1.1.1"
     kapt "com.android.databinding:compiler:$androidPluginVersion"
 }
 

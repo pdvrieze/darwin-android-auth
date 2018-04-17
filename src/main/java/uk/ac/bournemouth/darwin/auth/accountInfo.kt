@@ -12,7 +12,8 @@ data class AccountInfo(
         val alias: String?,
         val fullname: String?,
         val isLocalPassword: Boolean,
-        val keys: List<KeyInfo>): Parcelable {
+        val keys: List<KeyInfo>,
+        val lookupTimeMs: Long = System.currentTimeMillis()): Parcelable {
 
     companion object {
         @JvmStatic

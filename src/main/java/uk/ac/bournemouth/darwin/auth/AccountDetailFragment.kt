@@ -1,21 +1,18 @@
 package uk.ac.bournemouth.darwin.auth
 
 import android.accounts.Account
-import android.accounts.AccountManager
-import android.arch.lifecycle.MutableLiveData
+import android.arch.lifecycle.LiveData
 import android.arch.lifecycle.Observer
+import android.arch.lifecycle.ViewModelProviders
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v7.recyclerview.extensions.ListAdapter
 import android.support.v7.util.DiffUtil
 import android.support.v7.widget.RecyclerView
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import kotlinx.coroutines.experimental.launch
-import nl.adaptivity.android.coroutines.getAuthToken
 import org.xmlpull.v1.XmlPullParserFactory
 import uk.ac.bournemouth.darwin.auth.databinding.AccountDetailBinding
 import uk.ac.bournemouth.darwin.auth.databinding.KeyListContentBinding
@@ -35,7 +32,7 @@ class AccountDetailFragment : Fragment() {
      */
     private var account: Account? = null
     private lateinit var binding: AccountDetailBinding
-    private var accountInfo= MutableLiveData<AccountInfo>()
+    private lateinit var accountInfo: LiveData<AccountInfo>
     var infoPending: Boolean = false
 
     private val keyAdapter = KeyAdapter()
@@ -81,30 +78,25 @@ class AccountDetailFragment : Fragment() {
                 account = it.getParcelable(ARG_ACCOUNT)
             }
         }
-        savedInstanceState?.apply { infoPending = getBoolean(ARG_INFO_PENDING, false) }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean(ARG_INFO_PENDING, infoPending)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(inflater, R.layout.account_detail, container, false)
+
         binding.keyList.adapter=keyAdapter
 
+        val viewModel = ViewModelProviders.of(this).get(AccountsViewModel::class.java)
         // Show the dummy content as text in a TextView.
         account?.let { account ->
             binding.accountDetail.text = "Account: ${account.name}"
 
-            val authBaseUrl = getAuthBase(AccountManager.get(activity), account)
 
-            if (! infoPending) {
-                requestAccountInfo(authBaseUrl, account)
-                infoPending = true
-            }
-
+            accountInfo = viewModel.getAccountInfo(activity!!, account)
 
             accountInfo.observe(this, Observer<AccountInfo> { info ->
                 binding.info = info
@@ -112,33 +104,17 @@ class AccountDetailFragment : Fragment() {
             } )
 
         }
+        viewModel.loading.observe(this) { binding.loading = it?: false }
+
+        binding.refreshLayout.setOnRefreshListener {
+            val a = account
+            if (a!=null) {
+                viewModel.getAccountInfo(activity!!, a, true)
+            }
+        }
 
 
         return binding.root
-    }
-
-    private fun requestAccountInfo(authBaseUrl: String?, account: Account) {
-        launch {
-            val am = AccountManager.get(activity!!)
-            val token = am.getAuthToken(activity!!, account, DWN_ACCOUNT_TOKEN_TYPE)
-            Log.d("AccountDetailFragment", "authtoken: $token")
-
-            val info = getAccountInfoHelper(authBaseUrl, token)
-
-            if (info != null) {
-                updateInfo(info)
-            } else {
-                am.invalidateAuthToken(DWN_ACCOUNT_TYPE, token)
-                getAccountInfoHelper(authBaseUrl, token)?.let { updateInfo(it) }
-            }
-        }
-    }
-
-    private fun updateInfo(accountInfo: AccountInfo) {
-        activity?.runOnUiThread {
-            this.accountInfo.value = accountInfo
-            infoPending = false
-        }
     }
 
 
@@ -148,7 +124,6 @@ class AccountDetailFragment : Fragment() {
          * represents.
          */
         const val ARG_ACCOUNT = "account"
-        const val ARG_INFO_PENDING = "infoPending"
     }
 }
 
@@ -157,7 +132,7 @@ private fun getInfoUrl(authBaseUrl: String?): URI {
 }
 
 
-private fun getAccountInfoHelper(authBaseUrl: String?, token: String?): AccountInfo? {
+internal fun getAccountInfoHelper(authBaseUrl: String?, token: String?): AccountInfo? {
     val conn = getInfoUrl(authBaseUrl).toURL().openConnection() as HttpURLConnection
     try {
         conn.addRequestProperty("DWNID", token)
