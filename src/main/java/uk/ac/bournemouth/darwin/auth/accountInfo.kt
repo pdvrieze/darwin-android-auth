@@ -12,12 +12,13 @@ data class AccountInfo(
         val alias: String?,
         val fullname: String?,
         val isLocalPassword: Boolean,
+        val authBase: String?,
         val keys: List<KeyInfo>,
         val lookupTimeMs: Long = System.currentTimeMillis()): Parcelable {
 
     companion object {
         @JvmStatic
-        fun from(reader: XmlPullParser): AccountInfo {
+        fun from(reader: XmlPullParser, authBase: String?, lookupTimeMs: Long = System.currentTimeMillis()): AccountInfo {
             assert(reader.eventType == XmlPullParser.START_TAG && reader.name=="account")
 
             val username = reader.getAttributeValue(null, "username")!!
@@ -28,7 +29,7 @@ data class AccountInfo(
             val keys = generateSequence({reader.nextTag().let { if (it==XmlPullParser.END_TAG) null else it }})
                     .mapNotNull { KeyInfo.from(reader) }.toList()
 
-            return AccountInfo(username, alias, fullname, isLocalPassword, keys)
+            return AccountInfo(username, alias, fullname, isLocalPassword, authBase, keys, lookupTimeMs)
         }
     }
 }

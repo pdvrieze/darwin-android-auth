@@ -14,6 +14,8 @@ import kotlinx.coroutines.experimental.CoroutineStart
 import kotlinx.coroutines.experimental.launch
 import nl.adaptivity.android.coroutines.getAuthToken
 
+
+
 class AccountsViewModel(application: Application) : AndroidViewModel(application) {
     private val accounts = mutableMapOf<Account, MutableLiveData<AccountInfo>>()
 
@@ -23,19 +25,21 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
     val loading: LiveData<Boolean> get() = _loading
 
     @UiThread
-    fun getAccountInfo(activity: Activity, account: Account, forceReload: Boolean = false): LiveData<AccountInfo> {
-        return accounts.getOrPut(account) {
+    fun getAccountInfo(account: Account, forceReload: Boolean = false): (Activity) -> LiveData<AccountInfo> {
+        val liveData = accounts.getOrPut(account) {
             MutableLiveData()
-        }.also { liveData ->
-            val now = System.currentTimeMillis()
-            // We either force a reload because we are forced, or because the data is stale
-            if (forceReload || (liveData.value?.lookupTimeMs ?: 0L) + reloadMs < now) {
-                val authBaseUrl = getAuthBase(AccountManager.get(getApplication()), account)
+        }
+
+        val now = System.currentTimeMillis()
+        // We either force a reload because we are forced, or because the data is stale
+        if (forceReload || (liveData.value?.lookupTimeMs ?: 0L) + reloadMs < now) {
+            return { activity ->
+                val am = AccountManager.get(activity)
+                val authBaseUrl = getAuthBase(am, account)
                 _loading.value = true
                 // Use undispatched
                 launch(start = CoroutineStart.UNDISPATCHED) {
                     try {
-                        val am = AccountManager.get(getApplication())
                         val token = am.getAuthToken(activity, account, DWN_ACCOUNT_TOKEN_TYPE)
                         Log.d("AccountDetailFragment", "authtoken: $token")
 
@@ -44,7 +48,7 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
                         if (info != null) {
                             liveData.postValue(info)
                         } else {
-                            am.invalidateAuthToken(DWN_ACCOUNT_TYPE, token)
+                            AccountManager.get(activity).invalidateAuthToken(DWN_ACCOUNT_TYPE, token)
                             getAccountInfoHelper(authBaseUrl, token)?.let { liveData.postValue(it) }
                         }
                     } finally {
@@ -52,7 +56,10 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
                     }
 
                 }
+                liveData
             }
+        } else {
+            return { liveData }
         }
     }
 }

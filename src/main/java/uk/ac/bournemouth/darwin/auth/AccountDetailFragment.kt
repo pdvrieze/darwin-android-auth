@@ -96,7 +96,7 @@ class AccountDetailFragment : Fragment() {
             binding.accountDetail.text = "Account: ${account.name}"
 
 
-            accountInfo = viewModel.getAccountInfo(activity!!, account)
+            accountInfo = viewModel.getAccountInfo(account).invoke(activity!!)
 
             accountInfo.observe(this, Observer<AccountInfo> { info ->
                 binding.info = info
@@ -109,7 +109,7 @@ class AccountDetailFragment : Fragment() {
         binding.refreshLayout.setOnRefreshListener {
             val a = account
             if (a!=null) {
-                viewModel.getAccountInfo(activity!!, a, true)
+                viewModel.getAccountInfo(a, true).invoke(activity!!)
             }
         }
 
@@ -144,7 +144,7 @@ internal fun getAccountInfoHelper(authBaseUrl: String?, token: String?): Account
                         .apply { setInput(it, conn.getHeaderField("Content-Encoding") ?: "UTF8") }
 
                 reader.nextTag()
-                return AccountInfo.from(reader)
+                return AccountInfo.from(reader, authBaseUrl)
             }
         } else {
             return null

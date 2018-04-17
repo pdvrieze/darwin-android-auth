@@ -34,7 +34,7 @@ import java.util.*
 @JvmField
 val UTF8 = Charset.forName("UTF-8")
 
-@BindingAdapter("app:dateText")
+@BindingAdapter("dateText")
 fun setDateText(view: TextView, date: Date?) {
     if (date==null) {
         view.text = view.context.getString(R.string.lastUseNever)
