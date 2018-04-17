@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016.
+ * Copyright (c) 2018.
  *
  * This file is part of ProcessManager.
  *
@@ -10,84 +10,110 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
+ * You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
 
+
 ext {
-    if (! has('androidCompatVersion') ) { androidCompatVersion = '27.0.2' }
-    if (! has('androidBuildToolsVersion') ) { androidBuildToolsVersion = '27.0.2' }
-    if (! rootProject.hasProperty('androidTarget')) { androidTarget = 27 }
+    if (!rootProject.hasProperty('androidCompatVersion')) {
+        androidCompatVersion = '27.1.1'
+    }
 }
 
 buildscript {
     ext {
-        if (! has('androidPluginVersion') ) { androidPluginVersion = '3.0.1' }
+        if (!rootProject.hasProperty('androidPluginVersion')) {
+            androidPluginVersion = '3.1.1'
+        }
+        if (!rootProject.hasProperty('kotlin_version')) {
+            androidPluginVersion = '1.2.31'
+        }
     }
     repositories {
+        mavenLocal()
         jcenter()
-	    google()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath "com.android.tools.build:gradle:${androidPluginVersion}"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
-}
-
-repositories {
-    jcenter()
-    google()
 }
 
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
-version = '1.2.3'
+version = '1.2.5'
 description = 'Authentication library providing accounts that link against android.'
 
 dependencies {
-    compile "com.android.support:support-annotations:${androidCompatVersion}"
-    compile "com.android.support:support-v4:${androidCompatVersion}"
-//    testCompile 'junit:junit:4.12'
-    compile 'com.android.support.constraint:constraint-layout:1.0.2'
+    implementation "com.android.support:support-annotations:${androidCompatVersion}"
+    implementation "com.android.support:recyclerview-v7:${androidCompatVersion}"
+    implementation "com.android.support:appcompat-v7:${androidCompatVersion}"
+    implementation "com.android.support:cardview-v7:${androidCompatVersion}"
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+    implementation 'com.esotericsoftware:kryo:4.0.1'
+    implementation 'net.devrieze:android-coroutines-appcompat:0.6.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.5'
+    implementation "android.arch.lifecycle:extensions:1.1.1"
+    kapt "com.android.databinding:compiler:$androidPluginVersion"
+    kapt "android.arch.lifecycle:compiler:1.1.1"
 }
 
 android {
-    compileSdkVersion androidTarget
-    buildToolsVersion "${androidBuildToolsVersion}"
-
+    compileSdkVersion 27
     defaultConfig {
+        applicationId 'uk.ac.bournemouth.darwin.auth'
         minSdkVersion 14
-        targetSdkVersion androidTarget
-        versionCode 1002004
+        targetSdkVersion 27
+        versionCode 1002005
         versionName version
+        resValue 'string', 'applicationId', applicationId
     }
-
-//    signingConfigs {
-//        releaseConfig {
-//            storeFile file(RELEASE_STORE_FILE) // Set this in ~/.gradle/gradle.properties
-//            storePassword System.getenv("ANDROID_STORE_PASSWD")
-//            keyAlias RELEASE_KEY_ALIAS  // Set this in ~/.gradle/gradle.properties
-//            keyPassword System.getenv("ANDROID_KEY_PASSWD")
-//        }
-//    }
-
     dataBinding {
         enabled = true
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+        }
+        debugMinified {
+            applicationIdSuffix ".debugmini"
+            versionNameSuffix "-debugmini"
+            resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-project.txt'
         }
         release {
 //            signingConfig signingConfigs.releaseConfig
             minifyEnabled true
             shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-project.txt'
         }
     }
+}
+
+
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
+}
+
+androidExtensions {
+    experimental = true
 }

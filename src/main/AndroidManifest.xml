@@ -1,4 +1,4 @@
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright (c) 2016.
   ~
   ~ This file is part of ProcessManager.
@@ -12,10 +12,10 @@
   ~
   ~ You should have received a copy of the GNU Lesser General Public License along with Foobar.  If not,
   ~ see <http://www.gnu.org/licenses/>.
-  -->
-
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          xmlns:tools="http://schemas.android.com/tools" package="uk.ac.bournemouth.darwin.auth" >
+    xmlns:tools="http://schemas.android.com/tools"
+    package="uk.ac.bournemouth.darwin.auth">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
@@ -24,15 +24,16 @@
     <uses-permission android:name="android.permission.USE_CREDENTIALS" />
 
     <application
-            android:icon="@mipmap/ic_launcher"
-            android:label="@string/app_name"
-            android:theme="@style/AppTheme"
-            android:allowBackup="false"
-            android:fullBackupContent="false"
-            android:supportsRtl="true"
-            tools:ignore="GoogleAppIndexingWarning,UnusedAttribute">
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        tools:ignore="GoogleAppIndexingWarning,UnusedAttribute">
         <service
-            android:name="DarwinAuthenticatorService" android:permission="android.permission.ACCOUNT_MANAGER">
+            android:name=".DarwinAuthenticatorService"
+            android:permission="android.permission.ACCOUNT_MANAGER">
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
@@ -41,34 +42,45 @@
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator" />
         </service>
+
         <receiver
-                android:name=".UninstallReceiver"
-                android:priority="999"
-                android:enabled="true">
+            android:name=".UninstallReceiver"
+            android:enabled="true"
+            android:priority="999">
             <intent-filter>
-                <action android:name="android.intent.action.PACKAGE_REMOVED"/>
-                <data android:scheme="package"/>
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+
+                <data android:scheme="package" />
             </intent-filter>
         </receiver>
 
         <activity
-            android:name="DarwinAuthenticatorActivity"
+            android:name=".DarwinAuthenticatorActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/authenticator_activity_label"
-            android:windowSoftInputMode="stateVisible|adjustResize"
-            android:excludeFromRecents="true" >
-        </activity>
+            android:windowSoftInputMode="stateVisible|adjustResize" />
         <activity
-            android:name="AccountInfoActivity"
+            android:name=".AuthTokenPermissionActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="@string/authenticator_activity_label" >
+            android:label="Permission for Darwin" />
+        <activity
+            android:name=".AccountListActivity"
+            android:label="@string/title_account_list"
+            android:theme="@style/AppTheme2"
+            android:exported="true" />
+        <activity
+            android:name=".AccountDetailActivity"
+            android:label="@string/title_account_detail"
+            android:parentActivityName=".AccountListActivity"
+            android:theme="@style/AppTheme2">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="uk.ac.bournemouth.darwin.auth.AccountListActivity" />
         </activity>
-        <activity android:name=".AuthTokenPermissionActivity"
-                  android:icon="@mipmap/ic_launcher"
-                  android:label="Permission for Darwin"
-                  android:exported="true"
-                  android:excludeFromRecents="true" />
     </application>
 
 </manifest>

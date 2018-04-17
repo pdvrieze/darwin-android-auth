@@ -18,4 +18,32 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
--keepnames
+
+-dontobfuscate
+-dontwarn java.lang.invoke.SerializedLambda
+-dontwarn sun.misc.**
+-dontwarn sun.nio.ch.DirectBuffer
+-dontwarn java.beans.**
+-dontnote kotlin.internal.jdk8.JDK8PlatformImplementations
+-dontnote kotlin.internal.JRE8PlatformImplementations
+-dontnote kotlin.internal.jdk7.JDK7PlatformImplementations
+-dontnote kotlin.reflect.jvm.internal.ReflectionFactoryImpl
+-dontnote COM.newmonics.PercClassLoader.**
+-dontnote sun.reflect.ReflectionFactory
+-dontnote org.objenesis.strategy.PlatformDescription
+-dontnote org.apache.harmony.xnet.provider.jsse.NativeCrypto
+#-dontwarn com.esotericsoftware.kryo.serializers.BeanSerializer
+#-dontwarn com.esotericsoftware.kryo.serializers.UnsafeCacheFields
+#-dontwarn com.esotericsoftware.kryo.io.UnsafeInput
+#-dontwarn com.esotericsoftware.kryo.io.UnsafeMemoryInput
+-keepclassmembers class ** {
+    *** INSTANCE;
+    int SDK_INT;
+}
+-keepclassmembers class kotlin.coroutines.experimental.SafeContinuation {
+    *;
+}
+-keep class kotlin.coroutines.experimental.CoroutineContext$Key
+-keep class kotlin.coroutines.experimental.CoroutineContext
+-keep class kotlin.coroutines.experimental.Continuation
+-keep class kotlin.jvm.functions.Function2

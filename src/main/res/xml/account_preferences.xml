@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (c) 2018.
+  ~
+  ~ This file is part of ProcessManager.
+  ~
+  ~ ProcessManager is free software: you can redistribute it and/or modify it under the terms of version 2.1 of the
+  ~ GNU Lesser General Public License as published by the Free Software Foundation.
+  ~
+  ~ ProcessManager is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+  ~ the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Lesser General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Lesser General Public License along with ProcessManager.  If not,
+  ~ see <http://www.gnu.org/licenses/>.
+  -->
+
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--<PreferenceCategory android:title="@string/pref_accountpref_category"/>-->
+    <PreferenceScreen android:title="@string/pref_accountpref_title" android:key="darwinAccountInfo" android:summary="@string/pref_accountpref_summary">
+        <intent android:targetClass="uk.ac.bournemouth.darwin.auth.AccountListActivity"
+                android:targetPackage="@string/applicationId"
+                android:action="android.intent.action.VIEW"
+            />
+    </PreferenceScreen>
+</PreferenceScreen>
