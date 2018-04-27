@@ -27,7 +27,7 @@ buildscript {
             androidPluginVersion = '3.1.1'
         }
         if (!rootProject.hasProperty('kotlin_version')) {
-            androidPluginVersion = '1.2.31'
+            androidPluginVersion = '1.2.40'
         }
     }
     repositories {
