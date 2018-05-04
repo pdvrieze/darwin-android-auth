@@ -93,7 +93,7 @@ class AccountDetailFragment : Fragment() {
         val viewModel = ViewModelProviders.of(this).get(AccountsViewModel::class.java)
         // Show the dummy content as text in a TextView.
         account?.let { account ->
-            binding.accountDetail.text = "Account: ${account.name}"
+            binding.accountDetail.text = container!!.resources.getString(R.string.lbl_account_name, account.name)
 
 
             accountInfo = viewModel.getAccountInfo(account).invoke(activity!!)

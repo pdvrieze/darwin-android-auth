@@ -22,6 +22,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
+import android.support.annotation.RequiresApi
 import android.support.annotation.StringRes
 import android.util.Base64
 import android.util.Log
@@ -530,7 +531,9 @@ var Bundle.authToken: String?
     set(value) = putString(AccountManager.KEY_AUTHTOKEN, value)
 
 var Bundle.customTokenExpiry: Long
+    @RequiresApi(Build.VERSION_CODES.M)
     get() = getLong(AbstractAccountAuthenticator.KEY_CUSTOM_TOKEN_EXPIRY, -1L)
+    @RequiresApi(Build.VERSION_CODES.M)
     set(value) = putLong(AbstractAccountAuthenticator.KEY_CUSTOM_TOKEN_EXPIRY, value)
 
 

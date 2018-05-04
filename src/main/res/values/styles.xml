@@ -19,10 +19,7 @@
     <style name="AppTheme.Base" parent="android:Theme.Light">
 
     </style>
-    <style name="AppTheme" parent="AppTheme.Base">
-        <item name="buttonBarNegativeButtonStyle">?android:attr/buttonBarButtonStyle</item>
-        <item name="buttonBarPositiveButtonStyle">?android:attr/buttonBarButtonStyle</item>
-    </style>
+    <style name="AppTheme" parent="AppTheme.Base"></style>
 
     <style name="AppTheme2.Base" parent="Theme.AppCompat.Light">
 

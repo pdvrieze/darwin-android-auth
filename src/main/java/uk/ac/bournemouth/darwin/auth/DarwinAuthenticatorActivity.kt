@@ -46,6 +46,8 @@ import android.widget.Toast
 import uk.ac.bournemouth.darwin.auth.databinding.DarwinAuthenticatorActivityBinding
 
 import java.io.*
+import java.lang.ref.SoftReference
+import java.lang.ref.WeakReference
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URLEncoder
@@ -92,92 +94,106 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     /**
      * A task that takes care of actually authenticating the user.
      */
-    private inner class AuthenticatorTask : AsyncTask<Any, CharSequence, AuthResult>() {
+    private class AuthenticatorTask(activity: DarwinAuthenticatorActivity) : AsyncTask<Any, CharSequence, AuthResult>() {
+
+        private val _activity = WeakReference<DarwinAuthenticatorActivity>(activity)
+        private val activity: DarwinAuthenticatorActivity?
+            get() = _activity.get()
 
         private lateinit var account: Account
 
         override fun doInBackground(vararg params: Any): AuthResult {
             account = params[0] as Account
-            val i = account.name.lastIndexOf('@')
+
             val aUsername = account.getUsername()
             val password = params[1] as String
             var keypair: KeyPair? = null
-            if (!isConfirmCredentials) {
-                publishProgress(getText(R.string.creating_keys))
-                try {
-                    // The keypair generation is initiated on start of the activity, so it can happen while the details are entered.
-                    keypair = this@DarwinAuthenticatorActivity.keypair!!.get()
-                } catch (e: InterruptedException) {
-                    return if (isCancelled) {
-                        AuthResult.CANCELLED
-                    } else {
-                        AuthResult.UNKNOWNFAILURE
-                    }
-                } catch (e: ExecutionException) {
-                    Log.w(TAG, "Getting keypair failed", e.cause)
-                    return AuthResult.UNKNOWNFAILURE
-                }
+            run {
+                val ac = activity ?: return AuthResult.CANCELLED
+                val isConfirm = ac.isConfirmCredentials
+                if (!isConfirm) {
 
-                if (isCancelled) {
-                    return AuthResult.CANCELLED
+                    publishProgress(ac.getText(R.string.creating_keys))
+                    try {
+                        // The keypair generation is initiated on start of the activity, so it can happen while the details are entered.
+                        keypair = ac.keypair!!.get()
+                    } catch (e: InterruptedException) {
+                        return if (isCancelled) {
+                            AuthResult.CANCELLED
+                        } else {
+                            AuthResult.UNKNOWNFAILURE
+                        }
+                    } catch (e: ExecutionException) {
+                        Log.w(TAG, "Getting keypair failed", e.cause)
+                        return AuthResult.UNKNOWNFAILURE
+                    }
+
+                    if (isCancelled) {
+                        return AuthResult.CANCELLED
+                    }
                 }
             }
-            publishProgress(getText(R.string.authenticating))
-            assert(keypair != null)
-            val authResult = registerPublicKey(binding.authBaseUrl, aUsername, password, keypair!!.public as RSAPublicKey)
-            if (authResult != AuthResult.SUCCESS) {
-                return authResult
+            activity?.apply {
+                publishProgress(getText(R.string.authenticating))
+                assert(keypair != null)
+                val authResult = registerPublicKey(binding.authBaseUrl, aUsername, password, keypair!!.public as RSAPublicKey)
+                if (authResult != AuthResult.SUCCESS) {
+                    return authResult
+                }
+                return if (isCancelled) AuthResult.CANCELLED else AuthResult.SUCCESS
             }
-            return if (isCancelled) AuthResult.CANCELLED else AuthResult.SUCCESS
+            return AuthResult.CANCELLED
         }
 
         override fun onPostExecute(result: AuthResult) {
-            Log.i(TAG, "Authentication result: " + result.toString())
-            if (progressDialog != null) {
-                progressDialog!!.dismiss()
-            }
-            val account = account
-            when (result) {
-                DarwinAuthenticatorActivity.AuthResult.SUCCESS             -> {
-                    try {
-                        storeCredentials(account, keyId, keypair!!.get(), binding.authBaseUrl)
-                    } catch (e: InterruptedException) {
-                        Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e)
-                    } catch (e: ExecutionException) {
-                        Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e)
-                    }
+            activity?.run {
+                Log.i(TAG, "Authentication result: " + result.toString())
+                if (progressDialog != null) {
+                    progressDialog!!.dismiss()
+                }
+                val account = this@AuthenticatorTask.account
+                when (result) {
+                    DarwinAuthenticatorActivity.AuthResult.SUCCESS             -> {
+                        try {
+                            storeCredentials(account, keyId, keypair!!.get(), binding.authBaseUrl)
+                        } catch (e: InterruptedException) {
+                            Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e)
+                        } catch (e: ExecutionException) {
+                            Log.e(TAG, "Retrieving keypair a second time failed. Should never happen.", e)
+                        }
 
-                    val msgId: Int = if (isConfirmCredentials) R.string.toast_update_success else R.string.toast_create_success
-                    val toast = Toast.makeText(this@DarwinAuthenticatorActivity, msgId, Toast.LENGTH_SHORT)
-                    notifyAccountAuthenticated(accountManager, account)
+                        val msgId: Int = if (isConfirmCredentials) R.string.toast_update_success else R.string.toast_create_success
+                        val toast = Toast.makeText(this@run, msgId, Toast.LENGTH_SHORT)
+                        notifyAccountAuthenticated(accountManager, account)
 
-                    val intent = Intent().apply {
-                        putExtra(AccountManager.KEY_ACCOUNT_NAME, account.name)
-                        putExtra(AccountManager.KEY_ACCOUNT_TYPE, DWN_ACCOUNT_TYPE)
-                        setAccountAuthenticatorResult(extras)
+                        val intent = Intent().apply {
+                            putExtra(AccountManager.KEY_ACCOUNT_NAME, account.name)
+                            putExtra(AccountManager.KEY_ACCOUNT_TYPE, DWN_ACCOUNT_TYPE)
+                            setAccountAuthenticatorResult(extras)
+                        }
+                        setResult(Activity.RESULT_OK, intent)
+                        toast.show()
+                        finish()
                     }
-                    setResult(Activity.RESULT_OK, intent)
-                    toast.show()
-                    finish()
-                }
-                DarwinAuthenticatorActivity.AuthResult.CANCELLED           -> {
-                    val toast = Toast.makeText(this@DarwinAuthenticatorActivity, R.string.toast_cancelled,
-                                               Toast.LENGTH_SHORT)
-                    toast.show()
-                    finish()
-                }
-                DarwinAuthenticatorActivity.AuthResult.UNKNOWNFAILURE      -> {
-                    showDialog(DLG_ERROR)
-                }
-                DarwinAuthenticatorActivity.AuthResult.INVALID_CREDENTIALS -> {
-                    showDialog(DLG_INVALIDAUTH)
+                    DarwinAuthenticatorActivity.AuthResult.CANCELLED           -> {
+                        val toast = Toast.makeText(this@run, R.string.toast_cancelled,
+                                                   Toast.LENGTH_SHORT)
+                        toast.show()
+                        finish()
+                    }
+                    DarwinAuthenticatorActivity.AuthResult.UNKNOWNFAILURE      -> {
+                        showDialog(DLG_ERROR)
+                    }
+                    DarwinAuthenticatorActivity.AuthResult.INVALID_CREDENTIALS -> {
+                        showDialog(DLG_INVALIDAUTH)
+                    }
                 }
             }
         }
 
         override fun onProgressUpdate(vararg values: CharSequence) {
-            if (progressDialog != null) {
-                progressDialog!!.setMessage(values[0])
+            activity?.apply {
+                progressDialog?.setMessage(values[0])
             }
             Log.i(TAG, "Auth progress: " + values[0])
         }
@@ -362,7 +378,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     private fun startAuthentication() {
         val username = (findViewById<View>(R.id.editUsername) as EditText).text.toString()
         val password = (findViewById<View>(R.id.editPassword) as EditText).text.toString()
-        val authTask = AuthenticatorTask().also { authTask = it }
+        val authTask = AuthenticatorTask(this).also { authTask = it }
         showDialog(DLG_PROGRESS)
         if (!isConfirmCredentials) {
             keypair = generateKeys() // Just call again, just to be sure.

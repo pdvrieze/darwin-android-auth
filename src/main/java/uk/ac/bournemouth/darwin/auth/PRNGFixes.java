@@ -28,6 +28,7 @@ package uk.ac.bournemouth.darwin.auth;
 
 import android.os.Build;
 import android.os.Process;
+import android.support.annotation.GuardedBy;
 import android.util.Log;
 
 import java.io.*;
@@ -44,6 +45,7 @@ import java.security.*;
 @SuppressWarnings({"boxing", "serial", "resource"})
 public final class PRNGFixes {
 
+  @SuppressWarnings("unused")
   private static final class ApplyHelper {
 
     static {
@@ -59,10 +61,11 @@ public final class PRNGFixes {
    * {@code Provider} of {@code SecureRandom} engines which pass through
    * all requests to the Linux PRNG.
    */
-  private static class LinuxPRNGSecureRandomProvider extends Provider {
+  @SuppressWarnings("CloneableClassWithoutClone")
+  private static final class LinuxPRNGSecureRandomProvider extends Provider {
 
 // Object Initialization
-    public LinuxPRNGSecureRandomProvider() {
+    LinuxPRNGSecureRandomProvider() {
       super("LinuxPRNG", 1.0, "A Linux-specific random number provider that uses" + " /dev/urandom");
       // Although /dev/urandom is not a SHA-1 PRNG, some apps
       // explicitly request a SHA1PRNG SecureRandom and we thus need to
@@ -78,8 +81,7 @@ public final class PRNGFixes {
    * {@link SecureRandomSpi} which passes all requests to the Linux PRNG
    * ({@code /dev/urandom}).
    */
-  @SuppressWarnings("JavaDoc")
-  public static class LinuxPRNGSecureRandom extends SecureRandomSpi {
+  static class LinuxPRNGSecureRandom extends SecureRandomSpi {
 
         /*
          * IMPLEMENTATION NOTE: Requests to generate bytes and to mix in a seed
@@ -95,23 +97,21 @@ public final class PRNGFixes {
 
     private static final File URANDOM_FILE = new File("/dev/urandom");
 
-    @SuppressWarnings("ConstantNamingConvention")
-    private static final Object _lock = new Object();
+      @SuppressWarnings("FieldNamingConvention")
+      private static final Object _lock = new Object();
 
     /**
      * Input stream for reading from Linux PRNG or {@code null} if not yet
      * opened.
-     *
-     * @GuardedBy("_lock")
      */
+    @GuardedBy("_lock")
     private static DataInputStream _urandomIn;
 
     /**
      * Output stream for writing to Linux PRNG or {@code null} if not yet
      * opened.
-     *
-     * @GuardedBy("_lock")
      */
+    @GuardedBy("_lock")
     private static OutputStream _urandomOut;
 
     /**
@@ -119,29 +119,29 @@ public final class PRNGFixes {
      * each instance needs to seed itself if the client does not explicitly
      * seed it.
      */
-    private boolean mSeeded;
+    private boolean isUnseeded = true;
 
     @Override
-    protected void engineSetSeed(final byte[] bytes) {
+    protected void engineSetSeed(final byte[] seed) {
       try {
         final OutputStream out;
         synchronized (_lock) {
           out = getUrandomOutputStream();
         }
-        out.write(bytes);
+        out.write(seed);
         out.flush();
       } catch (IOException e) {
         // On a small fraction of devices /dev/urandom is not writable.
         // Log and ignore.
         Log.w(PRNGFixes.class.getSimpleName(), "Failed to mix seed into " + URANDOM_FILE);
       } finally {
-        mSeeded = true;
+          isUnseeded = false;
       }
     }
 
     @Override
     protected void engineNextBytes(final byte[] bytes) {
-      if (!mSeeded) {
+      if (isUnseeded) {
         // Mix in the device- and invocation-specific seed.
         engineSetSeed(generateSeed());
       }
@@ -161,8 +161,8 @@ public final class PRNGFixes {
     }
 
     @Override
-    protected byte[] engineGenerateSeed(final int size) {
-      final byte[] seed = new byte[size];
+    protected byte[] engineGenerateSeed(final int numBytes) {
+      final byte[] seed = new byte[numBytes];
       engineNextBytes(seed);
       return seed;
     }
@@ -196,9 +196,11 @@ public final class PRNGFixes {
   private static final int VERSION_CODE_JELLY_BEAN = 16;
   private static final int VERSION_CODE_JELLY_BEAN_MR2 = 18;
   private static final byte[] BUILD_FINGERPRINT_AND_DEVICE_SERIAL = getBuildFingerprintAndDeviceSerial();
+    private static final int RANDOM_BYTES_TO_READ = 1024;
 
 // Object Initialization
   /** Hidden constructor to prevent instantiation. */
+  @SuppressWarnings("unused")
   private PRNGFixes() {}
 // Object Initialization end
 
@@ -275,8 +277,8 @@ public final class PRNGFixes {
       // Mix output of Linux PRNG into OpenSSL's PRNG
       final int bytesRead = ((Integer) Class.forName("org.apache.harmony.xnet.provider.jsse.NativeCrypto")
                                             .getMethod("RAND_load_file", String.class, long.class)
-                                            .invoke(null, "/dev/urandom", 1024)).intValue();
-      if (bytesRead != 1024) {
+                                            .invoke(null, "/dev/urandom", RANDOM_BYTES_TO_READ)).intValue();
+      if (bytesRead != RANDOM_BYTES_TO_READ) {
         throw new IOException("Unexpected number of bytes read from Linux PRNG: " + bytesRead);
       }
     } catch (Exception e) {
