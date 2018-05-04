@@ -52,7 +52,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
 
     private class ChallengeInfo(val responseUri: URI, val data: ByteArray?, val version: Int)
 
-    // Object Initialization
+
     private class StaleCredentialsException : Exception()// The exception itself is enough
 
     private data class AuthenticatorKeyInfo(val keyId: Long, val privateKey: RSAPrivateKey)
@@ -353,7 +353,7 @@ class DarwinAuthenticator(private val context: Context) : AbstractAccountAuthent
         @JvmStatic
         fun addAllowedUid(am: AccountManager, account: Account, uid: Int) {
             val oldAllowedUids: String? = am.getUserData(account, KEY_ALLOWED_UIDS)
-            val newAllowedUids :String = when {
+            val newAllowedUids: String = when {
                 oldAllowedUids == null || oldAllowedUids.isEmpty()
                      -> Integer.toString(uid)
 
