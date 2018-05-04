@@ -32,7 +32,7 @@ import java.util.*
 
 /** The UTF8 Character set  */
 @JvmField
-val UTF8 = Charset.forName("UTF-8")
+val UTF8: Charset = Charset.forName("UTF-8")
 
 @BindingAdapter("dateText")
 fun setDateText(view: TextView, date: Date?) {

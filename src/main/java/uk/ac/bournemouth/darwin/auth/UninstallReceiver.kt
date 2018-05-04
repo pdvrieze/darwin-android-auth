@@ -48,7 +48,7 @@ class UninstallReceiver : BroadcastReceiver() {
 
     companion object {
 
-        private val TAG = "UninstallReceiver"
+        private const val TAG = "UninstallReceiver"
 
         private fun doRemovePackagePermissions(intent: Intent, context: Context) {
             val uninstallUid = intent.getIntExtra(Intent.EXTRA_UID, -1)

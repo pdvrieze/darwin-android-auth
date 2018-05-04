@@ -57,8 +57,7 @@ dependencies {
     implementation 'com.android.support.constraint:constraint-layout:1.1.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'com.esotericsoftware:kryo:4.0.1'
-    implementation 'net.devrieze:android-coroutines-appcompat:0.6.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.5'
+    implementation 'net.devrieze:android-coroutines:0.6.3'
     implementation "android.arch.lifecycle:extensions:1.1.1"
     kapt "com.android.databinding:compiler:$androidPluginVersion"
     kapt "android.arch.lifecycle:compiler:1.1.1"

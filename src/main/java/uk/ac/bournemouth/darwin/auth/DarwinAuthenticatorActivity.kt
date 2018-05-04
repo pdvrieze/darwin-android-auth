@@ -25,7 +25,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.app.AlertDialog.Builder
 import android.app.Dialog
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.databinding.DataBindingUtil
@@ -44,9 +43,7 @@ import android.widget.TextView
 import android.widget.TextView.OnEditorActionListener
 import android.widget.Toast
 import uk.ac.bournemouth.darwin.auth.databinding.DarwinAuthenticatorActivityBinding
-
 import java.io.*
-import java.lang.ref.SoftReference
 import java.lang.ref.WeakReference
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
@@ -69,7 +66,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     private var keyId = -1L
     private var isConfirmCredentials: Boolean = false
     private var authTask: AuthenticatorTask? = null
-    private var progressDialog: ProgressDialog? = null
+    @Suppress("DEPRECATION")
+    private var progressDialog: android.app.ProgressDialog? = null
     private lateinit var accountManager: AccountManager
     private var keypair: Future<KeyPair>? = null
     private lateinit var binding: DarwinAuthenticatorActivityBinding
@@ -136,7 +134,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
             activity?.apply {
                 publishProgress(getText(R.string.authenticating))
                 assert(keypair != null)
-                val authResult = registerPublicKey(binding.authBaseUrl, aUsername, password, keypair!!.public as RSAPublicKey)
+                val authResult = registerPublicKey(binding.authBaseUrl, aUsername, password,
+                                                   keypair!!.public as RSAPublicKey)
                 if (authResult != AuthResult.SUCCESS) {
                     return authResult
                 }
@@ -182,9 +181,11 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
                         finish()
                     }
                     DarwinAuthenticatorActivity.AuthResult.UNKNOWNFAILURE      -> {
+                        @Suppress("DEPRECATION")
                         showDialog(DLG_ERROR)
                     }
                     DarwinAuthenticatorActivity.AuthResult.INVALID_CREDENTIALS -> {
+                        @Suppress("DEPRECATION")
                         showDialog(DLG_INVALIDAUTH)
                     }
                 }
@@ -305,6 +306,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
         super.onStop()
     }
 
+    @Suppress("OverridingDeprecatedMember")
     override fun onCreateDialog(id: Int, args: Bundle?): Dialog? = when (id) {
         DLG_PROGRESS    -> {
             createProcessDialog()
@@ -330,10 +332,10 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
 
     private fun createRetryDialogBuilder(): Builder {
         val builder = AlertDialog.Builder(this)
-        builder.setCancelable(true).setNegativeButton(android.R.string.cancel) { dialog, which ->
+        builder.setCancelable(true).setNegativeButton(android.R.string.cancel) { dialog, _ ->
             cancelClicked()
             dialog.dismiss()
-        }.setNeutralButton(R.string.retry) { dialog, which ->
+        }.setNeutralButton(R.string.retry) { dialog, _ ->
             retryClicked()
             dialog.dismiss()
         }
@@ -341,7 +343,8 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
     }
 
     private fun createProcessDialog(): Dialog {
-        val dialog = ProgressDialog(this)
+        @Suppress("DEPRECATION")
+        val dialog = android.app.ProgressDialog(this)
         dialog.setMessage(getText(R.string.authenticating))
         dialog.isIndeterminate = true
         dialog.setCancelable(true)
@@ -379,6 +382,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
         val username = (findViewById<View>(R.id.editUsername) as EditText).text.toString()
         val password = (findViewById<View>(R.id.editPassword) as EditText).text.toString()
         val authTask = AuthenticatorTask(this).also { authTask = it }
+        @Suppress("DEPRECATION")
         showDialog(DLG_PROGRESS)
         if (!isConfirmCredentials) {
             keypair = generateKeys() // Just call again, just to be sure.
@@ -397,12 +401,13 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
 
     private fun getAccountName(username: String): String {
         val accountName: String
-        val authBaseUrl = binding.authBaseUrl?.let { if (it.isEmpty()) null else it } ?: DarwinAuthenticator.DEFAULT_AUTH_BASE_URL
-        if ((authBaseUrl == DarwinAuthenticator.DEFAULT_AUTH_BASE_URL) && username.indexOf('@') < 0) {
-            accountName = username
-        } else {
-            val domain = Uri.parse(authBaseUrl).host.toLowerCase()
-            accountName = username + '@'.toString() + domain
+        val authBaseUrl = binding.authBaseUrl?.let { if (it.isEmpty()) null else it }
+                          ?: DarwinAuthenticator.DEFAULT_AUTH_BASE_URL
+        accountName = when {
+            (authBaseUrl == DarwinAuthenticator.DEFAULT_AUTH_BASE_URL) && username.indexOf('@') < 0
+                 -> username
+
+            else -> "$username@${Uri.parse(authBaseUrl).host.toLowerCase()}"
         }
         return accountName
     }
@@ -456,7 +461,7 @@ class DarwinAuthenticatorActivity : AccountAuthenticatorActivity(), OnClickListe
                 Log.i(TAG, "Authentication response code: $response")
                 if (response == HttpURLConnection.HTTP_FORBIDDEN) {
                     return AuthResult.INVALID_CREDENTIALS
-                } else if (response >= 200 && response < 400) {
+                } else if (response in 200..399) {
                     InputStreamReader(conn.inputStream, UTF8).useLines { lines ->
                         lines.forEach { line ->
                             val p = line.indexOf(':')

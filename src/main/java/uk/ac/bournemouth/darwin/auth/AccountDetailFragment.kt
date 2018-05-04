@@ -33,10 +33,10 @@ class AccountDetailFragment : Fragment() {
     private var account: Account? = null
     private lateinit var binding: AccountDetailBinding
     private lateinit var accountInfo: LiveData<AccountInfo>
-    var infoPending: Boolean = false
 
     private val keyAdapter = KeyAdapter()
 
+    @Suppress("ClassName")
     object KEYINFO_DIFF_CALLBACK: DiffUtil.ItemCallback<KeyInfo>() {
         override fun areItemsTheSame(oldItem: KeyInfo, newItem: KeyInfo): Boolean {
             return oldItem.keyId == newItem.keyId
@@ -78,10 +78,6 @@ class AccountDetailFragment : Fragment() {
                 account = it.getParcelable(ARG_ACCOUNT)
             }
         }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,

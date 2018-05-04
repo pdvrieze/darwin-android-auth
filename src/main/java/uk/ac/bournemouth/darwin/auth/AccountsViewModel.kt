@@ -11,15 +11,14 @@ import android.support.annotation.UiThread
 import android.text.format.DateUtils
 import android.util.Log
 import kotlinx.coroutines.experimental.CoroutineStart
-import kotlinx.coroutines.experimental.launch
+import nl.adaptivity.android.coroutines.aLaunch
 import nl.adaptivity.android.coroutines.getAuthToken
-
 
 
 class AccountsViewModel(application: Application) : AndroidViewModel(application) {
     private val accounts = mutableMapOf<Account, MutableLiveData<AccountInfo>>()
 
-    var reloadMs: Long = DateUtils.MINUTE_IN_MILLIS
+    private var reloadMs: Long = DateUtils.MINUTE_IN_MILLIS
 
     private val _loading= MutableLiveData<Boolean>().apply { setValue(false) }
     val loading: LiveData<Boolean> get() = _loading
@@ -38,9 +37,9 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
                 val authBaseUrl = getAuthBase(am, account)
                 _loading.value = true
                 // Use undispatched
-                launch(start = CoroutineStart.UNDISPATCHED) {
+                activity.aLaunch(start = CoroutineStart.UNDISPATCHED) {
                     try {
-                        val token = am.getAuthToken(activity, account, DWN_ACCOUNT_TOKEN_TYPE)
+                        val token = getAuthToken(account, DWN_ACCOUNT_TOKEN_TYPE)
                         Log.d("AccountDetailFragment", "authtoken: $token")
 
                         val info = getAccountInfoHelper(authBaseUrl, token)
