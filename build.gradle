@@ -17,17 +17,17 @@
 
 ext {
     if (!rootProject.hasProperty('androidCompatVersion')) {
-        androidCompatVersion = '27.1.1'
+        androidCompatVersion = '28.0.0'
     }
 }
 
 buildscript {
     ext {
         if (!rootProject.hasProperty('androidPluginVersion')) {
-            androidPluginVersion = '3.1.1'
+            androidPluginVersion = '3.3.2'
         }
         if (!rootProject.hasProperty('kotlin_version')) {
-            androidPluginVersion = '1.2.31'
+            kotlin_version = '1.3.21'
         }
     }
     repositories {
@@ -54,22 +54,28 @@ dependencies {
     implementation "com.android.support:recyclerview-v7:${androidCompatVersion}"
     implementation "com.android.support:appcompat-v7:${androidCompatVersion}"
     implementation "com.android.support:cardview-v7:${androidCompatVersion}"
-    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
-    implementation 'com.esotericsoftware:kryo:4.0.1'
-    implementation 'net.devrieze:android-coroutines-appcompat:0.6.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.5'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'com.esotericsoftware:kryo:4.0.2'
+    implementation 'net.devrieze:android-coroutines-appcompat:0.7.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.1'
     implementation "android.arch.lifecycle:extensions:1.1.1"
-    kapt "com.android.databinding:compiler:$androidPluginVersion"
+//    kapt "com.android.databinding:compiler:$androidPluginVersion"
     kapt "android.arch.lifecycle:compiler:1.1.1"
 }
 
+repositories {
+    jcenter()
+    google()
+    mavenLocal()
+}
+
 android {
-    compileSdkVersion 27
+    compileSdkVersion 28
     defaultConfig {
         applicationId 'uk.ac.bournemouth.darwin.auth'
         minSdkVersion 14
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 1002005
         versionName version
         resValue 'string', 'applicationId', applicationId
