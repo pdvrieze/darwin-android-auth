@@ -32,7 +32,7 @@ class HttpResponseException(connection: HttpURLConnection) : IOException(getMess
 
         private const val serialVersionUID = -1709759910920830203L
 
-        private val RESPONSE_BASE = "Unexpected HTTP Response:"
+        private const val RESPONSE_BASE = "Unexpected HTTP Response:"
 
         private fun getMessage(connection: HttpURLConnection) = buildString {
             try {
@@ -48,7 +48,7 @@ class HttpResponseException(connection: HttpURLConnection) : IOException(getMess
 
             } catch (e: IOException) {
                 if (length <= RESPONSE_BASE.length) {
-                    return "${RESPONSE_BASE} No details possible"
+                    return "$RESPONSE_BASE No details possible"
                 } else {
                     val s = toString()
                     if (s.startsWith(RESPONSE_BASE)) {
@@ -57,7 +57,7 @@ class HttpResponseException(connection: HttpURLConnection) : IOException(getMess
                             .append(s.substring(RESPONSE_BASE.length))
                     } else {
                         setLength(0)
-                        append("${RESPONSE_BASE} Partial details only: ")
+                        append("$RESPONSE_BASE Partial details only: ")
                             .append(s)
                     }
                 }

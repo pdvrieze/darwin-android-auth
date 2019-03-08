@@ -11,12 +11,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="@style/TextAppearance.AppCompat.Title"
-        tools:text="accountname" />
+        tools:text="accountname"
+        android:textIsSelectable="true" />
 
     <TextView
         android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"
-        tools:text="accounttype" />
+        tools:text="accounttype"
+        android:textIsSelectable="true" />
 </LinearLayout>

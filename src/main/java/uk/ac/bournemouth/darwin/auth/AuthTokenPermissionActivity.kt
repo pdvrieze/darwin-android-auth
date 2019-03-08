@@ -75,11 +75,11 @@ class AuthTokenPermissionActivity : Activity(), OnClickListener {
     }
 
     companion object {
-        private val Intent.account: Account? get() = getParcelableExtra<Account>(DarwinAuthenticator.KEY_ACCOUNT)
+        private val Intent.account: Account? get() = getParcelableExtra(DarwinAuthenticator.KEY_ACCOUNT)
         private val Intent.callerUid: Int get() = getIntExtra(AccountManager.KEY_CALLER_UID, -1)
         private val Intent.packageName:String? get() = getStringExtra(AccountManager.KEY_ANDROID_PACKAGE_NAME)
 
-        private val TAG = "AuthTokenPermissionAct"
+        private const val TAG = "AuthTokenPermissionAct"
     }
 
 }

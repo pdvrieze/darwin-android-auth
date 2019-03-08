@@ -34,16 +34,12 @@
     <string name="dlg_title_unauth">Invalid credentials</string>
     <string name="dlg_msg_unauth">The username password combination is not valid</string>
     <string name="retry">Retry</string>
-    <string name="lbl_account_creation_cancelled">Account creation cancelled</string>
-    <string name="lbl_cancellation_exception_report">Cancelled: %s</string>
-    <string name="lbl_getting_token">Getting auth token</string>
     <string name="lbl_permissionRequest">Do you want to allow <b>%s</b> full access to the following darwin account?</string>
     <string name="btn_no">No</string>
     <string name="btn_yes">Yes</string>
     <string name="error_invalid_tokenType">invalid authTokenType</string>
     <string name="err_unable_to_get_auth_key">Could not get authentication key</string>
     <string name="pref_accountpref_title">Account information</string>
-    <string name="pref_accountpref_category">Darwin account information and settings</string>
     <string name="pref_accountpref_summary">Get account information</string>
     <string name="title_account_list">Accounts</string>
     <string name="title_account_detail">Account Detail</string>
@@ -56,4 +52,5 @@
     <string name="unknownApp">Unknown application</string>
     <string name="lastUseNever">Never</string>
     <string name="lbl_authorized_applications">Authorized applications</string>
+    <string name="lbl_account_name">Account: %s</string>
 </resources>

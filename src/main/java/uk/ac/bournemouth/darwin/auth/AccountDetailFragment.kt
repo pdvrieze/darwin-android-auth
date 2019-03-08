@@ -33,10 +33,10 @@ class AccountDetailFragment : Fragment() {
     private var account: Account? = null
     private lateinit var binding: AccountDetailBinding
     private lateinit var accountInfo: LiveData<AccountInfo>
-    var infoPending: Boolean = false
 
     private val keyAdapter = KeyAdapter()
 
+    @Suppress("ClassName")
     object KEYINFO_DIFF_CALLBACK: DiffUtil.ItemCallback<KeyInfo>() {
         override fun areItemsTheSame(oldItem: KeyInfo, newItem: KeyInfo): Boolean {
             return oldItem.keyId == newItem.keyId
@@ -80,10 +80,6 @@ class AccountDetailFragment : Fragment() {
         }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(inflater, R.layout.account_detail, container, false)
@@ -93,7 +89,7 @@ class AccountDetailFragment : Fragment() {
         val viewModel = ViewModelProviders.of(this).get(AccountsViewModel::class.java)
         // Show the dummy content as text in a TextView.
         account?.let { account ->
-            binding.accountDetail.text = "Account: ${account.name}"
+            binding.accountDetail.text = container!!.resources.getString(R.string.lbl_account_name, account.name)
 
 
             accountInfo = viewModel.getAccountInfo(account).invoke(activity!!)

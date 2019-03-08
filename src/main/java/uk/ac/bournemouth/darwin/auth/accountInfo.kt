@@ -1,11 +1,13 @@
 package uk.ac.bournemouth.darwin.auth
 
+import android.annotation.SuppressLint
 import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize
 import org.xmlpull.v1.XmlPullParser
 import java.util.*
 
 
+@SuppressLint("ParcelCreator")
 @Parcelize
 data class AccountInfo(
         val username: String,
@@ -34,6 +36,7 @@ data class AccountInfo(
     }
 }
 
+@SuppressLint("ParcelCreator")
 @Parcelize
 data class KeyInfo(val keyId:Int, val appname:String?, val lastUse: Date?): Parcelable {
 

@@ -59,8 +59,6 @@ class AccountListActivity : AppCompatActivity() {
         private val onClickListener: View.OnClickListener
 
         init {
-            val hasOthers = values.size>1
-
             onClickListener = View.OnClickListener { v ->
                 val account = v.tag as Account
                 if (twoPane) {
