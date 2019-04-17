@@ -23,6 +23,7 @@
 -dontwarn java.lang.invoke.SerializedLambda
 -dontwarn sun.misc.**
 -dontwarn sun.nio.ch.DirectBuffer
+-dontwarn kotlinx.atomicfu.InterceptorKt
 -dontwarn java.beans.**
 -dontnote kotlin.internal.jdk8.JDK8PlatformImplementations
 -dontnote kotlin.internal.JRE8PlatformImplementations

@@ -16,18 +16,18 @@
 
 
 ext {
-    if (!rootProject.hasProperty('androidCompatVersion')) {
-        androidCompatVersion = '28.0.0'
+    if (!rootProject.hasProperty("androidCompatVersion")) {
+        androidCompatVersion = "28.0.0"
     }
 }
 
 buildscript {
     ext {
-        if (!rootProject.hasProperty('androidPluginVersion')) {
-            androidPluginVersion = '3.3.2'
+        if (!rootProject.hasProperty("androidPluginVersion")) {
+            androidPluginVersion = "3.3.2"
         }
-        if (!rootProject.hasProperty('kotlin_version')) {
-            kotlin_version = '1.3.21'
+        if (!rootProject.hasProperty("kotlin_version")) {
+            kotlin_version = "1.3.30"
         }
     }
     repositories {
@@ -46,19 +46,19 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
-version = '1.2.5'
-description = 'Authentication library providing accounts that link against android.'
+version = "1.2.6-SNAPSHOT"
+description = "Authentication library providing accounts that link against android."
 
 dependencies {
     implementation "com.android.support:support-annotations:${androidCompatVersion}"
     implementation "com.android.support:recyclerview-v7:${androidCompatVersion}"
     implementation "com.android.support:appcompat-v7:${androidCompatVersion}"
     implementation "com.android.support:cardview-v7:${androidCompatVersion}"
-    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation "com.android.support.constraint:constraint-layout:1.1.3"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'com.esotericsoftware:kryo:4.0.2'
-    implementation 'net.devrieze:android-coroutines-appcompat:0.7.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.1'
+    implementation "com.esotericsoftware:kryo:4.0.2"
+    implementation "net.devrieze:android-coroutines-appcompat:0.7.1-SNAPSHOT"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.2.0"
     implementation "android.arch.lifecycle:extensions:1.1.1"
 //    kapt "com.android.databinding:compiler:$androidPluginVersion"
     kapt "android.arch.lifecycle:compiler:1.1.1"
@@ -71,14 +71,14 @@ repositories {
 }
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion(28)
     defaultConfig {
-        applicationId 'uk.ac.bournemouth.darwin.auth'
-        minSdkVersion 14
-        targetSdkVersion 28
-        versionCode 1002005
-        versionName version
-        resValue 'string', 'applicationId', applicationId
+        applicationId="uk.ac.bournemouth.darwin.auth"
+        minSdkVersion(16)
+        targetSdkVersion(28)
+        versionCode=1002005
+        versionName=version
+        resValue("string", "applicationId", applicationId)
     }
     dataBinding {
         enabled = true
@@ -91,39 +91,37 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
-            versionNameSuffix "-debug"
-            resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+            applicationIdSuffix=".debug"
+            versionNameSuffix="-debug"
+            resValue("string", "applicationId", android.defaultConfig.applicationId + applicationIdSuffix)
         }
         debugMinified {
-            applicationIdSuffix ".debugmini"
-            versionNameSuffix "-debugmini"
-            resValue 'string', 'applicationId', android.defaultConfig.applicationId + applicationIdSuffix
+            applicationIdSuffix=".debugmini"
+            versionNameSuffix="-debugmini"
+            resValue "string", "applicationId", android.defaultConfig.applicationId + applicationIdSuffix
 
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'),
-                    'proguard-project.txt'
+            minifyEnabled=true
+            shrinkResources=true
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"),
+                    "proguard-project.txt")
         }
         release {
 //            signingConfig signingConfigs.releaseConfig
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'),
-                    'proguard-project.txt'
+            minifyEnabled=true
+            shrinkResources=true
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"),
+                    "proguard-project.txt")
         }
     }
     lintOptions {
         abortOnError false
     }
-}
 
-
-kotlin {
-    experimental {
-        coroutines "enable"
+    packagingOptions {
+        exclude("META-INF/*.kotlin_module")
     }
 }
+
 
 androidExtensions {
     experimental = true
