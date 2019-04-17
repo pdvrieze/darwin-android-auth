@@ -13,6 +13,7 @@ import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import nl.adaptivity.android.coroutines.CompatCoroutineFragment
 import org.xmlpull.v1.XmlPullParserFactory
 import uk.ac.bournemouth.darwin.auth.databinding.AccountDetailBinding
 import uk.ac.bournemouth.darwin.auth.databinding.KeyListContentBinding
@@ -25,7 +26,7 @@ import java.net.URI
  * in two-pane mode (on tablets) or a [AccountDetailActivity]
  * on handsets.
  */
-class AccountDetailFragment : Fragment() {
+class AccountDetailFragment : CompatCoroutineFragment() {
 
     /**
      * The dummy content this fragment is presenting.
@@ -92,7 +93,7 @@ class AccountDetailFragment : Fragment() {
             binding.accountDetail.text = container!!.resources.getString(R.string.lbl_account_name, account.name)
 
 
-            accountInfo = viewModel.getAccountInfo(account).invoke(activity!!)
+            accountInfo = viewModel.getAccountInfo(account).invoke(this)
 
             accountInfo.observe(this, Observer<AccountInfo> { info ->
                 binding.info = info
@@ -105,7 +106,7 @@ class AccountDetailFragment : Fragment() {
         binding.refreshLayout.setOnRefreshListener {
             val a = account
             if (a!=null) {
-                viewModel.getAccountInfo(a, true).invoke(activity!!)
+                viewModel.getAccountInfo(a, true).invoke(this)
             }
         }
 

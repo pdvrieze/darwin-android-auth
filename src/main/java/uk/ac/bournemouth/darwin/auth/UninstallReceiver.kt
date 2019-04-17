@@ -21,7 +21,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import kotlinx.coroutines.experimental.launch
 
 
 /**
@@ -36,10 +35,9 @@ class UninstallReceiver : BroadcastReceiver() {
             if (BuildConfig.DEBUG) {
                 val pendingResult = goAsync()
                 val appContext = context.applicationContext
-                launch {
-                    doRemovePackagePermissions(intent, appContext)
-                    pendingResult.finish()
-                }
+
+                doRemovePackagePermissions(intent, appContext)
+                pendingResult.finish()
             } else {
                 doRemovePackagePermissions(intent, context)
             }

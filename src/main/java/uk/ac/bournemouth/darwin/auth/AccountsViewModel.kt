@@ -10,7 +10,9 @@ import android.arch.lifecycle.MutableLiveData
 import android.support.annotation.UiThread
 import android.text.format.DateUtils
 import android.util.Log
-import kotlinx.coroutines.experimental.CoroutineStart
+import kotlinx.coroutines.CoroutineStart
+import nl.adaptivity.android.coroutines.CompatCoroutineFragment
+import nl.adaptivity.android.coroutines.CoroutineActivity
 import nl.adaptivity.android.coroutines.aLaunch
 import nl.adaptivity.android.coroutines.getAuthToken
 
@@ -24,7 +26,7 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
     val loading: LiveData<Boolean> get() = _loading
 
     @UiThread
-    fun getAccountInfo(account: Account, forceReload: Boolean = false): (Activity) -> LiveData<AccountInfo> {
+    fun getAccountInfo(account: Account, forceReload: Boolean = false): (CompatCoroutineFragment) -> LiveData<AccountInfo> {
         val liveData = accounts.getOrPut(account) {
             MutableLiveData()
         }
@@ -32,12 +34,12 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
         val now = System.currentTimeMillis()
         // We either force a reload because we are forced, or because the data is stale
         if (forceReload || (liveData.value?.lookupTimeMs ?: 0L) + reloadMs < now) {
-            return { activity ->
-                val am = AccountManager.get(activity)
+            return { fragment ->
+                val am = AccountManager.get(fragment.activity)
                 val authBaseUrl = getAuthBase(am, account)
                 _loading.value = true
                 // Use undispatched
-                activity.aLaunch(start = CoroutineStart.UNDISPATCHED) {
+                fragment.aLaunch(start = CoroutineStart.UNDISPATCHED) {
                     try {
                         val token = getAuthToken(account, DWN_ACCOUNT_TOKEN_TYPE)
                         Log.d("AccountDetailFragment", "authtoken: $token")
